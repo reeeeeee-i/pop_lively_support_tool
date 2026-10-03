@@ -1,0 +1,21 @@
+[project]
+name = "popn-daken-counter"
+version = "0.1.0"
+description = "pop'n music Lively 打鍵カウンタ"
+requires-python = ">=3.11"
+dependencies = [
+    "dxcam>=0.0.5",
+    "imagehash>=4.3.2",
+    "numpy>=2.4.1",
+    "obsws-python>=1.8.0",
+    "pillow>=12.1.0",
+    "pyside6>=6.10.1",
+    # 曲名認識用 Windows 標準 OCR (Windows.Media.Ocr)
+    "winrt-runtime>=3.2.1",
+    "winrt-Windows.Foundation>=3.2.1",
+    "winrt-Windows.Foundation.Collections>=3.2.1",
+    "winrt-Windows.Globalization>=3.2.1",
+    "winrt-Windows.Graphics.Imaging>=3.2.1",
+    "winrt-Windows.Media.Ocr>=3.2.1",
+    "winrt-Windows.Storage.Streams>=3.2.1",
+]
