@@ -2,9 +2,10 @@
 setlocal
 cd /d "%~dp0"
 
-set VENV=F:\Develop\inf_daken_counter_obsw\.venv\Scripts\python.exe
+set VENV=%~dp0.venv\Scripts\python.exe
 if not exist "%VENV%" (
     echo .venv not found: %VENV%
+    echo Run "uv sync" first.
     pause
     exit /b 1
 )

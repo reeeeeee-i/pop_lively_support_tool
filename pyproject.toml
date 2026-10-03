@@ -19,3 +19,9 @@ dependencies = [
     "winrt-Windows.Media.Ocr>=3.2.1",
     "winrt-Windows.Storage.Streams>=3.2.1",
 ]
+
+[dependency-groups]
+# exe ビルド用 (build.bat)
+dev = [
+    "cx-freeze>=8.5.3",
+]
