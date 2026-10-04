@@ -144,7 +144,7 @@ _CSV_LEGACY_LAYOUTS = (
         "options_summary": 7,
         "hispeed": 8, "popkun": 9, "gauge_type": 10, "random": 11,
         "played_at": 12,
-    }, {"difficulty": "E"}),
+    }, {"difficulty": "EX"}),
 )
 
 
@@ -293,6 +293,8 @@ class PopnDatabase:
         for name, definition in _SCORES_ADDED_COLUMNS:
             if name not in columns:
                 self._conn.execute(f"ALTER TABLE scores ADD COLUMN {name} {definition};")
+        # 旧データは EX を "E" と記録していた
+        self._conn.execute("UPDATE scores SET difficulty = 'EX' WHERE UPPER(difficulty) = 'E';")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_scores_music_id ON scores (music_id);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_scores_played_at ON scores (played_at);")
 

@@ -7,14 +7,14 @@ from enum import Enum
 
 from src.option_master import OPTION_DEFAULTS, OPTION_KEYS, OPTION_LABELS
 
-# 難易度区分コード (L/N/H/E) → 曲テーブルのレベル列
-DIFFICULTY_LEVEL_COLUMNS = {"L": "easy", "N": "normal", "H": "hyper", "E": "ex"}
+# 難易度区分コード (L/N/H/EX) → 曲テーブルのレベル列
+DIFFICULTY_LEVEL_COLUMNS = {"L": "easy", "N": "normal", "H": "hyper", "EX": "ex"}
 
 _DIFFICULTY_CODES = {
     "EASY": "L", "LIGHT": "L", "L": "L",
     "NORMAL": "N", "N": "N",
     "HYPER": "H", "H": "H",
-    "EX": "E", "E": "E",
+    "EX": "EX", "E": "EX",   # 旧データでは "E" と記録されている
 }
 
 # 等速のハイスピード。旧データでは "OFF" / "x1.0" と記録されている
@@ -22,7 +22,7 @@ _HISPEED_OFF = ("OFF", "1.0", "x1.0")
 
 
 def difficulty_code(difficulty: str) -> str:
-    """難易度区分 (EASY / NORMAL / HYPER / EX など) をコード (L/N/H/E) にする。
+    """難易度区分 (EASY / NORMAL / HYPER / EX など) をコード (L/N/H/EX) にする。
 
     該当しない文字列は大文字にしてそのまま返す。
     """
@@ -134,7 +134,7 @@ class PopnScoreRecord:
 
     @property
     def difficulty_code(self) -> str:
-        """難易度区分コード (L: EASY / N: NORMAL / H: HYPER / E: EX)"""
+        """難易度区分コード (L: EASY / N: NORMAL / H: HYPER / EX: EX)"""
         return difficulty_code(self.difficulty)
 
     def to_csv_row(self) -> list:

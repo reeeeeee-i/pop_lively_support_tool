@@ -90,7 +90,7 @@ _MUSIC_COLUMNS = [
     ("easy", "L", 36),
     ("normal", "N", 36),
     ("hyper", "H", 36),
-    ("ex", "E", 36),
+    ("ex", "EX", 36),
 ]
 
 
