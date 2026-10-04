@@ -7,7 +7,16 @@ inf_daken_counter_obsw の setup.py をベースに、本ツール向けに改�
 import os
 from pathlib import Path
 import sys
+import tomllib
 from cx_Freeze import Executable, setup
+
+# ver は pyproject.toml の version (年月日 YYMMDD、例: 261004) を正とする。
+# exe のバージョンリソースは各要素 16bit までなので "26.10.4" の形に分割して渡す。
+with open(Path(__file__).parent / "pyproject.toml", "rb") as f:
+    APP_VERSION = tomllib.load(f)["project"]["version"]
+if not (len(APP_VERSION) == 6 and APP_VERSION.isdigit()):
+    raise SystemExit(f"pyproject.toml の version は YYMMDD 形式にしてください: {APP_VERSION}")
+EXE_VERSION = ".".join(str(int(APP_VERSION[i:i + 2])) for i in (0, 2, 4))
 
 # PySide6のパスを取得
 include_files = []
@@ -175,7 +184,7 @@ executables = [
 
 setup(
     name="pop_lively_support_tool",
-    version="1.0.0",
+    version=EXE_VERSION,
     description="pop_lively_support_tool",
     options={
         "build_exe": build_exe_options,
