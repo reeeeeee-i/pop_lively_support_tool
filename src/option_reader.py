@@ -16,7 +16,8 @@
     - ポップ君 / ゲージ / RANDOM / JUDGE+ / AUTO / GUIDE SE はアイコンの絵柄を
       テンプレート (src/option_templates.py) と照合する。
     - HIDDEN / SUDDEN はアイコン内の数字を 1 文字ずつテンプレートと照合する。
-    - アイコンから分からない項目 (設定中の OJAMA の種類、GUIDE SE の大/小) は読まない。
+    - アイコンから分からない項目 (設定中の OJAMA の種類) は読まない。
+      GUIDE SE は ON / OFF だけが分かる (大/小は同じ絵柄)。
 """
 from __future__ import annotations
 
@@ -327,6 +328,7 @@ _HISPEED_LABEL_ROWS = 10   # ハイスピードのアイコンは数字で絵柄
 _HISPEED_RE = re.compile(r"[x×*]?(\d{1,2}\.\d)=")
 _BPM_FIX = str.maketrans({"ー": "=", "一": "=", "ニ": "=", "二": "=", "o": "0", "l": "1"})
 UNREADABLE = "?"           # テンプレートのラベル: アイコンからは値を決められない
+GUIDE_SE_ON = "ON"         # GUIDE SE のアイコンが ON (大/小は不明) のときに返す値。マスターの値ではない
 
 # アイコンの並び (上段, 下段)
 _FULL_ICONS = (
@@ -564,6 +566,7 @@ def read_option_icons(image: Image.Image) -> dict[str, str] | None:
     """OptionSelect 画面 (1920x1080) のオプションアイコンから設定を読み取る。
 
     戻り値は {項目キー: マスターの値}。アイコンから分からない項目は含めない。
+    GUIDE SE が ON の場合のみ、大/小が分からないので GUIDE_SE_ON を返す。
     アイコンが表示されていなければ None。
     """
     arr = np.asarray(image.convert("RGB"))
@@ -603,6 +606,9 @@ def read_option_icons(image: Image.Image) -> dict[str, str] | None:
             logger.debug("オプションアイコン: %s を読めませんでした (距離 %.3f)", key, dist)
             continue
         if label == UNREADABLE:
+            # GUIDE SE は ON であることだけは分かる。大/小は呼び出し側で直前の値から決める
+            if key == "guide_se":
+                values[key] = GUIDE_SE_ON
             continue
         value = normalize_option(key, label)
         if value is None:

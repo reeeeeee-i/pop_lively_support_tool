@@ -27,6 +27,7 @@ from src.config import Config
 from src.classes import DetectMode, PopnJudge, PopnOptions, format_song
 from src.cpu_affinity import LivelyCpuAffinity
 from src.screen_reader import ScreenReader
+from src.option_reader import GUIDE_SE_ON
 from src.obs_websocket_manager import OBSWebSocketManager
 from src.score_manager import ScoreManager
 from src.funcs import load_ui_text
@@ -46,6 +47,8 @@ _TITLE_SCAN_MAX_TRIES = 20
 _OPTION_SCAN_INTERVAL_FRAMES = 3
 # オプション読み取り: 同じ値がこの回数続いたら反映する（画面の開閉演出の途中を掴まないため）
 _OPTION_STABLE_READS = 2
+# GUIDE SE の ON の値。アイコンからは大/小が分からないので、先頭 (ゲームの初期値) を既定とする
+_GUIDE_SE_ON_VALUES = ("ON 大", "ON 小")
 
 # リザルト読み取り: 同じ値がこのフレーム数続いたら確定する（表示演出の途中を掴まないため）
 _RESULT_STABLE_FRAMES = 3
@@ -418,6 +421,10 @@ class MainWindow(QMainWindow):
 
         # 読めなかった項目は現在の値を引き継ぐ
         current = self.score_manager.current_options.to_dict()
+        if values.get("guide_se") == GUIDE_SE_ON:
+            # アイコンからは ON の大/小が分からない。直前が ON ならその値、OFF なら初期値の「ON 大」とする
+            guide_se = current.get("guide_se")
+            values = {**values, "guide_se": guide_se if guide_se in _GUIDE_SE_ON_VALUES else _GUIDE_SE_ON_VALUES[0]}
         if any(current.get(k) != v for k, v in values.items()):
             self.score_manager.set_current_options(PopnOptions.from_dict({**current, **values}))
 
@@ -539,9 +546,17 @@ class MainWindow(QMainWindow):
             played_at = datetime.strptime(record.timestamp, "%Y-%m-%d %H:%M:%S")
             # ファイル名に使えない文字を置き換える
             title = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", record.title).strip(" .") or "Unknown"
-            name = f"{played_at:%Y%m%d_%H%M%S}_{title}_{record.difficulty_code}_{record.score}.png"
+            jpeg = self.config.result_screenshot_format == "jpeg"
+            ext = "jpg" if jpeg else "png"
+            name = f"{played_at:%Y%m%d_%H%M%S}_{title}_{record.difficulty_code}_{record.score}.{ext}"
             path = os.path.join(folder, name)
-            image.save(path)
+            if jpeg:
+                # JPEG はアルファチャンネルを持てないため RGB に変換する
+                image.convert("RGB").save(
+                    path, "JPEG", quality=self.config.result_screenshot_jpeg_quality
+                )
+            else:
+                image.save(path)
             logger.info("リザルトのスクリーンショットを保存: %s", path)
         except Exception as e:
             logger.error("スクリーンショット保存エラー: %s", e)

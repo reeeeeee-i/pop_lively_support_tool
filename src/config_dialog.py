@@ -4,11 +4,34 @@ from __future__ import annotations
 from PySide6.QtWidgets import (
     QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QGroupBox,
     QHBoxLayout, QLabel, QLineEdit, QPushButton, QRadioButton, QButtonGroup,
-    QCheckBox, QSpinBox, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
+    QCheckBox, QSlider, QSpinBox, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
+)
+from PySide6.QtCore import Qt
+
+from src.config import Config, JPEG_QUALITY_RANGE
+from src.funcs import load_ui_text
+
+# 1920x1080 のリザルト画面を保存したときのファイルサイズの目安 (KB)。実測の平均値
+_PNG_SIZE_KB = 1630
+# JPEG の品質 → サイズ (KB)。間の品質は線形補間する
+_JPEG_SIZE_KB = (
+    (10, 83), (20, 115), (30, 140), (40, 161), (50, 181), (60, 202),
+    (70, 233), (80, 281), (85, 322), (90, 391), (95, 542), (100, 1030),
 )
 
-from src.config import Config
-from src.funcs import load_ui_text
+
+def _estimate_jpeg_size_kb(quality: int) -> float:
+    """JPEG の品質から、ファイルサイズの目安 (KB) を返す。"""
+    prev_q, prev_kb = _JPEG_SIZE_KB[0]
+    for q, kb in _JPEG_SIZE_KB[1:]:
+        if quality <= q:
+            return prev_kb + (kb - prev_kb) * (quality - prev_q) / (q - prev_q)
+        prev_q, prev_kb = q, kb
+    return prev_kb
+
+
+def _format_size(kb: float) -> str:
+    return f"{kb / 1024:.1f} MB" if kb >= 1000 else f"{round(kb, -1):.0f} KB"
 
 
 class ConfigDialog(QDialog):
@@ -108,6 +131,42 @@ class ConfigDialog(QDialog):
         dir_row.addWidget(self._edit_shot_dir)
         dir_row.addWidget(btn_shot_dir)
         shot_form.addRow(QLabel(self.ui.feature.screenshot_dir), dir_row)
+
+        self._shot_fmt_grp = QButtonGroup(self)
+        self._shot_fmt_png  = QRadioButton(self.ui.feature.screenshot_format_png)
+        self._shot_fmt_jpeg = QRadioButton(self.ui.feature.screenshot_format_jpeg)
+        self._shot_fmt_grp.addButton(self._shot_fmt_png, 0)
+        self._shot_fmt_grp.addButton(self._shot_fmt_jpeg, 1)
+        self._lbl_png_size = QLabel(
+            self.ui.feature.screenshot_png_size.format(size=_format_size(_PNG_SIZE_KB))
+        )
+        fmt_row = QHBoxLayout()
+        fmt_row.addWidget(self._shot_fmt_png)
+        fmt_row.addWidget(self._lbl_png_size)
+        fmt_row.addSpacing(16)
+        fmt_row.addWidget(self._shot_fmt_jpeg)
+        fmt_row.addStretch()
+        shot_form.addRow(QLabel(self.ui.feature.screenshot_format), fmt_row)
+
+        self._slider_shot_quality = QSlider(Qt.Orientation.Horizontal)
+        self._slider_shot_quality.setRange(*JPEG_QUALITY_RANGE)
+        self._slider_shot_quality.setPageStep(5)
+        self._slider_shot_quality.setToolTip(self.ui.feature.screenshot_quality_tip)
+        self._lbl_shot_quality = QLabel()
+        self._lbl_shot_quality.setToolTip(self.ui.feature.screenshot_quality_tip)
+        # 値が変わってもスライダーの幅が動かないよう、最大幅の表示に合わせておく
+        self._lbl_shot_quality.setMinimumWidth(
+            self._lbl_shot_quality.fontMetrics().horizontalAdvance(
+                self.ui.feature.screenshot_quality_value.format(quality=100, size="000 KB")
+            )
+        )
+        quality_row = QHBoxLayout()
+        quality_row.addWidget(self._slider_shot_quality)
+        quality_row.addWidget(self._lbl_shot_quality)
+        self._lbl_shot_quality_title = QLabel(self.ui.feature.screenshot_quality)
+        shot_form.addRow(self._lbl_shot_quality_title, quality_row)
+        self._slider_shot_quality.valueChanged.connect(self._on_shot_quality_changed)
+        self._shot_fmt_jpeg.toggled.connect(self._on_shot_format_toggled)
         layout.addWidget(shot_group)
 
         layout.addStretch()
@@ -130,6 +189,18 @@ class ConfigDialog(QDialog):
         conds["fullcombo"].setEnabled(not every)
         # PERFECT は FULL COMBO に含まれるため、FULL COMBO 選択中は変更できない
         conds["perfect"].setEnabled(not every and not conds["fullcombo"].isChecked())
+
+    def _on_shot_format_toggled(self, jpeg: bool):
+        """圧縮率は JPEG のときだけ選べる。"""
+        self._lbl_shot_quality_title.setEnabled(jpeg)
+        self._slider_shot_quality.setEnabled(jpeg)
+        self._lbl_shot_quality.setEnabled(jpeg)
+        self._lbl_png_size.setEnabled(not jpeg)
+
+    def _on_shot_quality_changed(self, quality: int):
+        self._lbl_shot_quality.setText(self.ui.feature.screenshot_quality_value.format(
+            quality=quality, size=_format_size(_estimate_jpeg_size_kb(quality)),
+        ))
 
     def _browse_shot_dir(self):
         path = QFileDialog.getExistingDirectory(
@@ -185,6 +256,11 @@ class ConfigDialog(QDialog):
         for key, chk in self._chk_shot_conds.items():
             chk.setChecked(key in self.config.result_screenshot_conditions)
         self._edit_shot_dir.setText(self.config.result_screenshot_dir)
+        jpeg = self.config.result_screenshot_format == "jpeg"
+        (self._shot_fmt_jpeg if jpeg else self._shot_fmt_png).setChecked(True)
+        self._slider_shot_quality.setValue(self.config.result_screenshot_jpeg_quality)
+        self._on_shot_quality_changed(self._slider_shot_quality.value())
+        self._on_shot_format_toggled(jpeg)
 
         self._edit_obs_host.setText(self.config.websocket_host)
         self._spin_obs_port.setValue(self.config.websocket_port)
@@ -207,6 +283,10 @@ class ConfigDialog(QDialog):
         self.config.result_screenshot_dir       = (
             self._edit_shot_dir.text().strip() or "result_screenshots"
         )
+        self.config.result_screenshot_format    = (
+            "jpeg" if self._shot_fmt_jpeg.isChecked() else "png"
+        )
+        self.config.result_screenshot_jpeg_quality = self._slider_shot_quality.value()
         self.config.websocket_host              = self._edit_obs_host.text().strip()
         self.config.websocket_port              = self._spin_obs_port.value()
         self.config.websocket_password          = self._edit_obs_pass.text()
