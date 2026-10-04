@@ -34,6 +34,36 @@ from src.option_master import OPTION_KEYS as _OPTION_KEYS
 from src.score_manager import ScoreManager
 
 
+_VER_PREFIX = "pop'n music"
+
+# スコア履歴の ver 列に表示する略称 (ナンバリング作品は数字のみにする)
+_VER_SHORT_NAMES = {
+    "Sunny Park": "SP",
+    "ラピストリア": "LT",
+    "éclale": "ec",
+    "うさぎと猫と少年の夢": "うさ",
+    "peace": "pe",
+    "解明リドルズ": "解",
+    "UniLab": "UL",
+    "Jam&Fizz": "JF",
+    "High☆Cheers!!": "HC",
+}
+
+
+def _short_ver(ver: str) -> str:
+    """ver の略称。"pop'n music 20 fantasia" → "20"、"pop'n music Sunny Park" → "SP"。"""
+    if not ver.startswith(_VER_PREFIX):
+        return ver
+    name = ver[len(_VER_PREFIX):].strip()
+    if not name:
+        # 初代は "pop'n music" のみ
+        return "1"
+    number = re.match(r"\d+", name)
+    if number:
+        return number.group()
+    return _VER_SHORT_NAMES.get(name, name)
+
+
 class _Column(NamedTuple):
     key: str
     """設定保存用の識別子"""
@@ -46,7 +76,7 @@ class _Column(NamedTuple):
 # 既定の列順。並び順・表示/非表示・幅はユーザーが変更でき、config に保存される
 _COLUMNS: list[_Column] = [
     _Column("level",      "レベル",       lambda r: r.level if r.level else "", 50, True),
-    _Column("ver",        "ver",          lambda r: r.ver, 150),
+    _Column("ver",        "ver",          lambda r: _short_ver(r.ver), 50),
     _Column("genre",      "ジャンル",     lambda r: r.genre, 160),
     _Column("difficulty", "難易度",       lambda r: r.difficulty_code, 50),
     _Column("title",      "曲名",         lambda r: r.title, 220),
@@ -618,9 +648,15 @@ class ScoreHistoryDialog(QDialog):
         self._row_texts = []
         for row_idx, r in enumerate(records):
             texts = [str(col.value(r)) for col in _COLUMNS]
-            self._row_texts.append([_search_key(t) for t in texts])
+            # ver は略称で表示するが、正式名称でも検索できるようにする
+            self._row_texts.append([
+                _search_key(f"{t}\n{r.ver}" if col.key == "ver" else t)
+                for col, t in zip(_COLUMNS, texts)
+            ])
             for col_idx, (col, text) in enumerate(zip(_COLUMNS, texts)):
                 item = QTableWidgetItem(text)
+                if col.key == "ver":
+                    item.setToolTip(r.ver)
                 if col.numeric:
                     item.setTextAlignment(
                         Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
