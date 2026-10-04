@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 import tomllib
 from cx_Freeze import Executable, setup
+from cx_Freeze.command.build_exe import build_exe as _build_exe
 
 # ver は pyproject.toml の version (年月日 YYMMDD、例: 261004) を正とする。
 # exe のバージョンリソースは各要素 16bit までなので "26.10.4" の形に分割して渡す。
@@ -182,6 +183,16 @@ executables = [
     )
 ]
 
+
+class build_exe(_build_exe):
+    """setuptools は setup() の引数より pyproject.toml の version (YYMMDD) を優先するため、
+    exe のバージョンリソースに渡す直前で EXE_VERSION に差し替える。"""
+
+    def run(self):
+        self.distribution.metadata.version = EXE_VERSION
+        super().run()
+
+
 setup(
     name="pop_lively_support_tool",
     version=EXE_VERSION,
@@ -189,5 +200,6 @@ setup(
     options={
         "build_exe": build_exe_options,
     },
+    cmdclass={"build_exe": build_exe},
     executables=executables,
 )
