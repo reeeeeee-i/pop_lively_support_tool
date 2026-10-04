@@ -61,7 +61,7 @@ class UIText:
         screenshot_cond_fullcombo       = "FULL COMBO"
         screenshot_cond_perfect         = "PERFECT"
         screenshot_cond_tip             = (
-            "スコアを記録したときのリザルト画面を PNG で保存します。\n"
+            "スコアを記録したときのリザルト画面を保存します。\n"
             "チェックした条件のいずれかを満たしたときに保存します（すべて外すと保存しません）。\n"
             "「自己ベスト」は、同じ曲・難易度のスコアを更新したとき（初プレーを含む）に保存します。\n"
             "曲を特定できなかったプレーは比較できないため保存します。\n"
@@ -70,6 +70,16 @@ class UIText:
         screenshot_dir                  = "保存先フォルダ:"
         screenshot_dir_browse           = "参照..."
         screenshot_dir_dialog           = "スクリーンショットの保存先フォルダ"
+        screenshot_format               = "保存形式:"
+        screenshot_format_png           = "PNG"
+        screenshot_format_jpeg          = "JPEG"
+        screenshot_quality              = "JPEG 圧縮率:"
+        screenshot_quality_tip          = (
+            "左ほど圧縮率が高く、ファイルは小さくなりますが画質が落ちます。\n"
+            "ファイルサイズは 1920x1080 のリザルト画面での目安です。"
+        )
+        screenshot_quality_value        = "品質 {quality} (目安: 約 {size})"
+        screenshot_png_size             = "(目安: 約 {size})"
 
     class obs_dialog:
         title       = "OBS 制御設定"

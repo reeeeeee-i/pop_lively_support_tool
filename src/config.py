@@ -32,10 +32,14 @@ _KEYS = (
     "score_skip_retire",
     "result_screenshot_conditions",
     "result_screenshot_dir",
+    "result_screenshot_format",
+    "result_screenshot_jpeg_quality",
 )
 # 旧設定 result_screenshot_mode → result_screenshot_conditions
 _LEGACY_SCREENSHOT_MODES = {"off": [], "all": ["all"], "best": ["best"]}
 SCREENSHOT_CONDITIONS = ("all", "best", "fullcombo", "perfect")
+SCREENSHOT_FORMATS = ("png", "jpeg")
+JPEG_QUALITY_RANGE = (10, 100)
 # 設定ファイルの "window" 以下のキー → Config の属性名
 _WINDOW_KEYS = {
     "x": "main_window_x",
@@ -96,6 +100,10 @@ class Config:
         'all'=毎回 / 'best'=自己ベスト更新時 / 'fullcombo'=FULL COMBO 時 / 'perfect'=PERFECT 時"""
         self.result_screenshot_dir: str = "result_screenshots"
         """スクリーンショットの保存先フォルダ"""
+        self.result_screenshot_format: str = "png"
+        """保存形式。'png' / 'jpeg'"""
+        self.result_screenshot_jpeg_quality: int = 85
+        """JPEG の品質 (10～100)。小さいほど圧縮率が高く、ファイルが小さくなる"""
 
         self.load_config()
         self.save_config()
@@ -118,6 +126,14 @@ class Config:
                 )
             elif not isinstance(self.result_screenshot_conditions, list):
                 self.result_screenshot_conditions = []
+            if self.result_screenshot_format not in SCREENSHOT_FORMATS:
+                self.result_screenshot_format = "png"
+            try:
+                quality = int(self.result_screenshot_jpeg_quality)
+            except (TypeError, ValueError):
+                quality = 85
+            low, high = JPEG_QUALITY_RANGE
+            self.result_screenshot_jpeg_quality = max(low, min(high, quality))
             window = d.get("window", {})
             for key, attr in _WINDOW_KEYS.items():
                 setattr(self, attr, window.get(key, getattr(self, attr)))
