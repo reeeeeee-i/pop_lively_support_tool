@@ -116,6 +116,7 @@ class ConfigDialog(QDialog):
             "fullcombo": QCheckBox(self.ui.feature.screenshot_cond_fullcombo),
             "perfect":   QCheckBox(self.ui.feature.screenshot_cond_perfect),
         }
+        self._shot_conds_before_all: dict[str, bool] = {}
         cond_row = QHBoxLayout()
         for chk in self._chk_shot_conds.values():
             chk.setToolTip(self.ui.feature.screenshot_cond_tip)
@@ -173,7 +174,18 @@ class ConfigDialog(QDialog):
         return tab
 
     def _on_shot_all_toggled(self, checked: bool):
-        """「毎回」を選んだら、他の条件は意味を持たないのでグレーアウトする。"""
+        """「毎回」を選んだら、他の条件もすべて選んだ状態でグレーアウトする。
+
+        外したときは、選ぶ前のチェック状態に戻す。
+        """
+        others = {key: chk for key, chk in self._chk_shot_conds.items() if key != "all"}
+        if checked:
+            self._shot_conds_before_all = {key: chk.isChecked() for key, chk in others.items()}
+            for chk in others.values():
+                chk.setChecked(True)
+        else:
+            for key, chk in others.items():
+                chk.setChecked(self._shot_conds_before_all.get(key, False))
         self._update_shot_conds_enabled()
 
     def _on_shot_fullcombo_toggled(self, checked: bool):
@@ -253,8 +265,9 @@ class ConfigDialog(QDialog):
         self._chk_keep_on_top.setChecked(self.config.keep_on_top)
         self._chk_single_cpu.setChecked(self.config.lively_single_cpu)
         self._chk_skip_retire.setChecked(self.config.score_skip_retire)
-        for key, chk in self._chk_shot_conds.items():
-            chk.setChecked(key in self.config.result_screenshot_conditions)
+        # 「毎回」は他の条件を上書きするので、他の条件を反映してから最後に設定する
+        for key in ("best", "fullcombo", "perfect", "all"):
+            self._chk_shot_conds[key].setChecked(key in self.config.result_screenshot_conditions)
         self._edit_shot_dir.setText(self.config.result_screenshot_dir)
         jpeg = self.config.result_screenshot_format == "jpeg"
         (self._shot_fmt_jpeg if jpeg else self._shot_fmt_png).setChecked(True)
@@ -277,9 +290,15 @@ class ConfigDialog(QDialog):
         self.config.keep_on_top                 = self._chk_keep_on_top.isChecked()
         self.config.lively_single_cpu           = self._chk_single_cpu.isChecked()
         self.config.score_skip_retire           = self._chk_skip_retire.isChecked()
-        self.config.result_screenshot_conditions = [
-            key for key, chk in self._chk_shot_conds.items() if chk.isChecked()
-        ]
+        if self._chk_shot_conds["all"].isChecked():
+            # 「毎回」を外したときに戻せるよう、選ぶ前の条件を一緒に保存する
+            self.config.result_screenshot_conditions = ["all"] + [
+                key for key, on in self._shot_conds_before_all.items() if on
+            ]
+        else:
+            self.config.result_screenshot_conditions = [
+                key for key, chk in self._chk_shot_conds.items() if chk.isChecked()
+            ]
         self.config.result_screenshot_dir       = (
             self._edit_shot_dir.text().strip() or "result_screenshots"
         )
