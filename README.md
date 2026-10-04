@@ -1,7 +1,7 @@
 # pop_lively_support_tool
 
-pop'n music Lively 専用の打鍵数カウンタツールです。  
-beatmania IIDX INFINITAS 向けツール [inf_daken_counter_obsw](../inf_daken_counter_obsw) を参考に、pop'n music Lively 専用として新規開発しました。
+pop'n music Lively 専用のサポートツールです。  
+beatmania IIDX INFINITAS 向けツール [inf_daken_counter_obsw](https://github.com/dj-kata/inf_daken_counter_obsw) を参考に、pop'n music Lively 専用として新規開発しました。
 
 ## 機能
 
@@ -20,7 +20,7 @@ beatmania IIDX INFINITAS 向けツール [inf_daken_counter_obsw](../inf_daken_c
 ## 使い方
 
 1. pop'n music Lively を起動する
-2. `pop_lively_support_tool.pyw` を実行する
+2. `pop_lively_support_tool.exe` を実行する
 3. ゲーム画面が自動検出される
 4. プレー中の判定内訳が自動的にカウントされる
 
@@ -186,6 +186,7 @@ pop_lively_support_tool/
 ├── popn.db              # SQLite データベース (musics, scores)
 ├── popn_score.csv       # スコアエクスポート先 CSV
 ├── pyproject.toml
+├── LICENSE              # Apache License 2.0
 ├── config.json          # 実行時設定（自動生成）
 ├── src/
 │   ├── classes.py       # データクラス・列挙型
@@ -210,3 +211,28 @@ pop_lively_support_tool/
 │   └── ui_jp.py         # UI文字列（日本語）
 └── log/                 # ログ出力先
 ```
+
+## ライセンス
+
+本ツールは [Apache License 2.0](LICENSE) のもとで公開しています。
+利用・改変・再配布は同ライセンスの条件に従ってください。
+
+- 再配布する場合は、ライセンス文 (`LICENSE`) と著作権表示を添付してください。
+- 改変したファイルを再配布する場合は、変更を加えた旨を明示してください。
+- 本ツールの一部（OBS WebSocket 接続管理 `src/obs_websocket_manager.py`、OBS 制御設定ダイアログ `src/obs_dialog.py`、ビルド設定 `setup.py`）は、dj-kata 氏の [inf_daken_counter_obsw](https://github.com/dj-kata/inf_daken_counter_obsw)（Apache License 2.0）をもとに、pop'n music Lively 向けに改変したものです。該当ファイルの先頭に、改変した旨を記載しています。
+- 本ツールが利用している外部ライブラリ（PySide6、NumPy、Pillow、ImageHash、DXcam、obsws-python、winrt など）には、それぞれのライセンスが適用されます。
+
+## 免責事項
+
+- 本ツールは個人が開発した**非公式**のツールです。株式会社コナミデジタルエンタテインメント、株式会社コナミアーケードゲームスをはじめとする KONAMI グループ各社とは**一切関係がなく**、承認・推奨・サポートを受けたものでもありません。本ツールについて KONAMI へ問い合わせることはおやめください。
+- 「pop'n music」「beatmania IIDX」などのゲーム名・名称は、各権利者の商標または登録商標です。
+- 本ツールは**利用者自身の責任**で使用してください。本ツールは現状有姿 (AS IS) で提供され、動作・読み取り結果の正確性・特定目的への適合性などについて、いかなる保証もしません。
+- 本ツールの使用または使用不能によって生じたいかなる損害・不利益（ゲームアカウントへの措置、スコアデータの消失・誤記録、PC や OBS の不具合、録画・配信の失敗などを含みます）についても、作者は一切の責任を負いません。
+- 本ツールの使用がゲームの利用規約に抵触しないかどうかは、利用者自身で確認・判断してください。
+
+### 使用上の注意
+
+- 本ツールはゲーム画面の映像を読み取って動作します。ゲームのプログラム・メモリ・通信内容の読み書きや改変は行いません。
+- 「Lively の CPU 割り当てを 1 コアにする」を有効にした場合のみ、ゲームプロセスの CPU 割り当てと優先度を OS の機能で変更します（既定は無効）。この機能を使うかどうかも利用者自身の判断でお願いします。
+- ゲームのアップデートで画面レイアウトが変わると、判定・曲名・スコアなどを正しく読み取れなくなることがあります。
+- スコアは `popn.db` に保存されます。大切な記録は、定期的に `popn.db` のコピーや CSV エクスポートでバックアップを取ってください。

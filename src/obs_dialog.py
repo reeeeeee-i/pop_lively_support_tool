@@ -1,5 +1,7 @@
 """OBS 制御設定ダイアログ (pop_lively_support_tool版)
 既存の inf_daken_counter_obsw の obs_dialog.py をベースに移植・簡略化。
+
+元のコード: https://github.com/dj-kata/inf_daken_counter_obsw (Apache License 2.0)
 """
 from __future__ import annotations
 

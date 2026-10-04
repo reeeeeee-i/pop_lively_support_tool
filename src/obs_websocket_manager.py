@@ -1,6 +1,8 @@
 """OBS WebSocket 接続管理クラス。
 既存の inf_daken_counter_obsw を参考に pop'n music Lively 向けに移植・簡略化。
 infnotebook 依存・load_ui_text 依存を完全に除去している。
+
+元のコード: https://github.com/dj-kata/inf_daken_counter_obsw (Apache License 2.0)
 """
 from __future__ import annotations
 

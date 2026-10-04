@@ -1,5 +1,7 @@
 """pop_lively_support_tool - cx_Freeze ビルド設定
-G:\\Download\\inf_daken_counter の構成をベースに作成
+inf_daken_counter_obsw の setup.py をベースに、本ツール向けに改変して作成。
+
+元のコード: https://github.com/dj-kata/inf_daken_counter_obsw (Apache License 2.0)
 """
 
 import os
@@ -47,6 +49,9 @@ if os.path.exists("popn_music_list.json"):
 
 if os.path.exists("README.md"):
     include_files.append(("README.md", "README.md"))
+
+if os.path.exists("LICENSE"):
+    include_files.append(("LICENSE", "LICENSE"))
 
 # アイコンファイル
 icon_path = None

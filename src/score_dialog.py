@@ -75,11 +75,11 @@ class _Column(NamedTuple):
 
 # 既定の列順。並び順・表示/非表示・幅はユーザーが変更でき、config に保存される
 _COLUMNS: list[_Column] = [
-    _Column("level",      "レベル",       lambda r: r.level if r.level else "", 50, True),
     _Column("ver",        "ver",          lambda r: _short_ver(r.ver), 50),
-    _Column("genre",      "ジャンル",     lambda r: r.genre, 160),
     _Column("difficulty", "難易度",       lambda r: r.difficulty_code, 50),
-    _Column("title",      "曲名",         lambda r: r.title, 220),
+    _Column("level",      "レベル",       lambda r: r.level if r.level else "", 50, True),
+    _Column("genre",      "ジャンル",     lambda r: r.genre, 160),
+    _Column("title",     "曲名",         lambda r: r.title, 220),
     _Column("artist",     "アーティスト", lambda r: r.artist, 180),
     _Column("score",      "score",        lambda r: r.score, 65, True),
     _Column("cool",       "cool",         lambda r: r.cool, 50, True),
