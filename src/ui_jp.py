@@ -4,7 +4,7 @@
 class UIText:
 
     class window:
-        main_title     = "pop'n music Lively 打鍵カウンタ"
+        main_title     = "pop'n music Lively サポートツール"
         settings_title = "設定"
 
     class menu:
@@ -20,7 +20,6 @@ class UIText:
 
     class status:
         waiting_game     = "ゲーム画面を待機中..."
-        game_found       = "ゲーム検出"
         playing          = "プレー中"
         result           = "リザルト"
         select           = "選曲中"
@@ -42,7 +41,25 @@ class UIText:
         direct_capture_all_monitors_tip = "旧直接取得で使います。"
         other_group                     = "その他"
         keep_on_top                     = "常に最前面表示する"
+        lively_single_cpu               = "Lively の CPU 割り当てを 1 コアにする（ロード時間短縮）"
+        lively_single_cpu_tip           = (
+            "Lively の起動を検出したら、使用率が最小の CPU だけを割り当て、優先度を「高」にします。\n"
+            "無効に戻すと、起動中の Lively の割り当ても元に戻します。"
+        )
         websocket_port                  = "データ表示用ポート:"
+        screenshot_group                = "リザルトのスクリーンショット"
+        screenshot_mode                 = "撮影:"
+        screenshot_mode_off             = "無効"
+        screenshot_mode_all             = "保存"
+        screenshot_mode_best            = "自己ベストのみ保存"
+        screenshot_mode_tip             = (
+            "スコアを記録したときのリザルト画面を PNG で保存します。\n"
+            "「自己ベストのみ保存」は、同じ曲・難易度のスコアを更新したとき（初プレーを含む）だけ保存します。\n"
+            "曲を特定できなかったプレーは比較できないため保存します。"
+        )
+        screenshot_dir                  = "保存先フォルダ:"
+        screenshot_dir_browse           = "参照..."
+        screenshot_dir_dialog           = "スクリーンショットの保存先フォルダ"
 
     class obs_dialog:
         title       = "OBS 制御設定"
@@ -66,12 +83,3 @@ class UIText:
         last_song      = "最後にプレイした曲"
         reset_notes    = "本日の打鍵数をリセット"
         none_song      = "なし"
-
-    class judge_display:
-        cool  = "COOL"
-        great = "GREAT"
-        good  = "GOOD"
-        bad   = "BAD"
-        notes = "打鍵数"
-        reset = "リセット"
-        group = "判定内訳"

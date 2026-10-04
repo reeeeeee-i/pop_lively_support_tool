@@ -1,14 +1,12 @@
 """pop'n music Lively スコア管理・SQLite/CSVマネージャー"""
 from __future__ import annotations
 
-import csv
 import os
 import time
-from pathlib import Path
-from typing import List, Optional
+from datetime import datetime
 
-from src.classes import PopnOptions, PopnScoreRecord
-from src.db import CSV_HEADERS, PopnDatabase
+from src.classes import PopnOptions, PopnScoreRecord, format_song
+from src.db import PopnDatabase
 from src.logger import get_logger
 
 logger = get_logger(__name__)
@@ -28,7 +26,7 @@ class ScoreManager:
         self.music_json_path = music_json_path
 
         self.db = PopnDatabase(self.db_path)
-        self.records: List[PopnScoreRecord] = []
+        self.records: list[PopnScoreRecord] = []
         self.current_options: PopnOptions = PopnOptions()
         self.current_music_id: str = ""
         self.current_song_title: str = "Unknown"
@@ -36,10 +34,12 @@ class ScoreManager:
         self.current_difficulty: str = ""
         self._last_saved_time: float = 0.0
 
-        # 初回セットアップ: 曲テーブルが空なら JSON からインポート
-        if self.db.get_music_count() == 0 and os.path.exists(self.music_json_path):
-            logger.info("初回起動: 曲リスト JSON からインポートを開始します...")
+        # 曲リスト JSON を曲テーブルに反映 (music_id で上書き更新)。
+        # 未登録曲の自動登録で曲テーブルが空でなくなっていても、JSON の曲が欠けないよう毎回行う
+        if os.path.exists(self.music_json_path):
             self.db.import_music_list_json(self.music_json_path)
+        else:
+            logger.warning("曲リスト JSON が見つかりません: %s", os.path.abspath(self.music_json_path))
 
         # スコア履歴読み込み
         self.load_from_db()
@@ -56,7 +56,7 @@ class ScoreManager:
     # ------------------------------------------------------------------
 
     def set_current_options(self, options: PopnOptions) -> None:
-        self.current_options = options
+        self.current_options = self.db.normalize_options(options)
         logger.info("使用オプション更新: %s", options.to_summary())
 
     def set_current_song_title(self, title: str) -> None:
@@ -91,19 +91,14 @@ class ScoreManager:
 
     def get_today_notes(self, date_str: str | None = None) -> int:
         """指定日（デフォルトは本日）の記録から総打鍵数を計算する"""
-        from datetime import datetime
-        target = date_str or datetime.now().strftime("%Y-%m-%d")
-        return self.db.get_today_notes(target)
+        return self.db.get_today_notes(date_str or datetime.now().strftime("%Y-%m-%d"))
 
     def get_last_played_song(self) -> str:
         """最後にプレイした曲名を取得する（最新レコード）"""
-        if self.records:
-            last = self.records[-1]
-            diff = last.difficulty_code
-            if diff:
-                return f"{last.title} [{diff}]"
-            return last.title
-        return ""
+        if not self.records:
+            return ""
+        last = self.records[-1]
+        return format_song(last.title, last.difficulty)
 
     # ------------------------------------------------------------------
     # レコード追加・DB保存
@@ -128,11 +123,19 @@ class ScoreManager:
             record.level = self.current_level
         if not record.difficulty and self.current_difficulty:
             record.difficulty = self.current_difficulty
-        if not record.options.to_summary() or record.options.to_summary() == "NORMAL":
+        if record.options.to_summary() == "NORMAL":
             record.options = self.current_options
+        # オプション値をマスターの表記に揃える
+        self.db.normalize_options(record.options)
 
         # SQLite データベースへ保存 (曲情報は除き、UUID で曲テーブルと結合)
         record_id = self.db.save_score(record)
+        # 履歴一覧は self.records をそのまま表示するため、曲テーブル側の情報も埋めておく
+        music = self.db.get_music(record.music_id)
+        if music:
+            record.genre = music["genre"] or ""
+            record.artist = music["artist"] or ""
+            record.ver = music["ver"] or ""
         self.records.append(record)
         self._last_saved_time = now
 
@@ -153,6 +156,37 @@ class ScoreManager:
         )
         return True
 
+    def is_personal_best(self, record: PopnScoreRecord) -> bool:
+        """記録済みの record が、同じ曲・難易度の他の記録のスコアをすべて上回っているか。
+
+        初プレーの譜面は自己ベストとして扱う。曲を特定できていない記録は比較できないため True を返す。
+        """
+        if not record.music_id:
+            return True
+        return all(
+            record.score > r.score
+            for r in self.records
+            if r is not record
+            and r.music_id == record.music_id
+            and r.difficulty_code == record.difficulty_code
+        )
+
+    def update_record(self, record: PopnScoreRecord) -> None:
+        """手動修正したスコア記録を DB に反映し、履歴を読み込み直す。"""
+        self.db.update_score(record)
+        logger.info("スコア記録修正 (DB ID:%s): %s - SCORE:%d", record.record_id, record.title, record.score)
+        self.load_from_db()
+
+    def delete_records(self, records: list[PopnScoreRecord]) -> None:
+        """スコア記録を DB から削除し、履歴を読み込み直す。"""
+        ids = [r.record_id for r in records if r.record_id is not None]
+        if len(ids) != len(records):
+            raise ValueError("record_id の無いレコードは削除できません")
+        self.db.delete_scores(ids)
+        for r in records:
+            logger.info("スコア記録削除 (DB ID:%s): %s - SCORE:%d", r.record_id, r.title, r.score)
+        self.load_from_db()
+
     def load_from_db(self) -> None:
         """SQLite DB から最新のスコア履歴を読み込む"""
         try:
@@ -161,15 +195,11 @@ class ScoreManager:
         except Exception as e:
             logger.error("DB スコア履歴読み込みエラー: %s", e)
 
-    def load_csv(self) -> None:
-        """互換性メソッド: DB から履歴を再読み込み"""
-        self.load_from_db()
-
     # ------------------------------------------------------------------
     # CSV 出力・エクスポート
     # ------------------------------------------------------------------
 
-    def export_csv(self, dest_path: Optional[str] = None) -> str:
+    def export_csv(self, dest_path: str | None = None) -> str:
         """スコア管理テーブルと曲テーブルを結合して CSV ファイルを出力する"""
         out_path = dest_path or self.csv_path
         self.db.export_csv(out_path)

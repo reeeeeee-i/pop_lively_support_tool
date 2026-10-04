@@ -1,30 +1,31 @@
-"""pop'n music Lively 打鍵カウンタ メインエントリポイント"""
+"""pop_lively_support_tool メインエントリポイント"""
 from __future__ import annotations
 
+import os
+import re
 import sys
 import time
 import traceback
 from datetime import datetime
 
 from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QAction, QFont
+from PySide6.QtGui import QAction, QFont, QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QGroupBox,
     QFormLayout,
-    QHBoxLayout,
     QLabel,
     QMainWindow,
     QMenuBar,
     QPushButton,
-    QSizePolicy,
     QStatusBar,
     QVBoxLayout,
     QWidget,
 )
 
 from src.config import Config
-from src.classes import DetectMode, PopnJudge, PopnOptions, PopnScoreRecord
+from src.classes import DetectMode, PopnJudge, PopnOptions, format_song
+from src.cpu_affinity import LivelyCpuAffinity
 from src.screen_reader import ScreenReader
 from src.obs_websocket_manager import OBSWebSocketManager
 from src.score_manager import ScoreManager
@@ -34,20 +35,61 @@ from src.logger import get_logger
 logger = get_logger(__name__)
 
 _LOOP_INTERVAL_MS = 100   # メインループ間隔 (ms)
+_CPU_AFFINITY_INTERVAL_MS = 1000   # Lively の CPU 割り当て監視間隔 (ms)
 
 # 曲名読み取り: このフレーム数ごとに 1 回読む (OCR は 1 回数十 ms かかるため毎フレームは行わない)
 _TITLE_SCAN_INTERVAL_FRAMES = 5
 # 曲名読み取り: この回数読んでも曲を特定できなければ諦める
 _TITLE_SCAN_MAX_TRIES = 20
 
+# オプション読み取り: このフレーム数ごとに 1 回読む
+_OPTION_SCAN_INTERVAL_FRAMES = 3
+# オプション読み取り: 同じ値がこの回数続いたら反映する（画面の開閉演出の途中を掴まないため）
+_OPTION_STABLE_READS = 2
+
 # リザルト読み取り: 同じ値がこのフレーム数続いたら確定する（表示演出の途中を掴まないため）
 _RESULT_STABLE_FRAMES = 3
 # リザルト読み取り: このフレーム数待っても安定しなければ、その時点の値で記録する
 _RESULT_TIMEOUT_FRAMES = 50
 
+# 現在のモード表示の文字色
+_MODE_COLORS = {
+    DetectMode.play:             "#00e676",  # プレー中（緑）
+    DetectMode.result:           "#ffd600",  # リザルト（黄）
+    DetectMode.select:           "#40c4ff",  # 選曲中（水色）
+    DetectMode.option:           "#ff80ab",  # オプション（ピンク）
+    DetectMode.title:            "#b388ff",  # タイトル（紫）
+    DetectMode.ticket:           "#b388ff",  # チケット（紫）
+    DetectMode.character_select: "#b388ff",  # キャラセレクト（紫）
+    DetectMode.exit:             "#ff5252",  # 終了画面（赤）
+    DetectMode.loading:          "#ffab40",  # ロード中（オレンジ）
+    DetectMode.unknown:          "#aaaaaa",  # 待機中（グレー）
+}
+
+# OBS トリガー (<モード名>_start / <モード名>_end) を出す画面。
+# 1 回の画面遷移で出る開始・終了トリガーの順序は、この並び順で決まる
+_TRIGGER_MODES = (
+    DetectMode.title,
+    DetectMode.ticket,
+    DetectMode.character_select,
+    DetectMode.select,
+    DetectMode.option,
+    DetectMode.play,
+    DetectMode.result,
+    DetectMode.loading,
+    DetectMode.exit,
+)
+
+
+def _bold_font(point_size: int) -> QFont:
+    font = QFont()
+    font.setPointSize(point_size)
+    font.setBold(True)
+    return font
+
 
 class MainWindow(QMainWindow):
-    """pop'n music Lively 打鍵カウンタ メインウィンドウ"""
+    """pop_lively_support_tool メインウィンドウ"""
 
     def __init__(self):
         super().__init__()
@@ -61,13 +103,13 @@ class MainWindow(QMainWindow):
             csv_path=self.config.score_csv_path,
         )
 
-        # 打鍵カウント（現在の曲の判定内訳）
-        self.song_cool  = 0
-        self.song_great = 0
-        self.song_good  = 0
-        self.song_bad   = 0
+        # 打鍵カウント（現在の曲の判定内訳）。プレー画面下部の累計値を読んだもので、
+        # リザルト画面を読めた時点でその値に置き換える
+        self._song_judge = PopnJudge()
 
         # 本日の打鍵数・日付管理
+        # _today_notes は確定分（リザルトで記録した曲 + 途中でやめた曲の暫定値）。
+        # 表示はこれにプレー中の曲の暫定値を加えたもの (_update_display)
         self._today_date  = datetime.now().strftime("%Y-%m-%d")
         self._today_notes = self.score_manager.get_today_notes(self._today_date)
 
@@ -81,6 +123,11 @@ class MainWindow(QMainWindow):
         self.current_mode = DetectMode.unknown
         self._title_scanned = False
         self._title_frames = 0
+
+        # オプション読み取り状態
+        self._option_values = None   # 直近に読めたオプション一覧
+        self._option_stable = 0
+        self._option_frames = 0
 
         # リザルト読み取り待ち状態
         self._result_pending = False
@@ -97,6 +144,12 @@ class MainWindow(QMainWindow):
         self._timer.timeout.connect(self._main_loop)
         self._timer.start(_LOOP_INTERVAL_MS)
 
+        # Lively の CPU 割り当て監視
+        self.cpu_affinity = LivelyCpuAffinity()
+        self._affinity_timer = QTimer(self)
+        self._affinity_timer.timeout.connect(self._update_cpu_affinity)
+        self._affinity_timer.start(_CPU_AFFINITY_INTERVAL_MS)
+
         # ウィンドウ位置・サイズ復元
         self.setGeometry(
             self.config.main_window_x,
@@ -104,8 +157,7 @@ class MainWindow(QMainWindow):
             self.config.main_window_width,
             self.config.main_window_height,
         )
-        if self.config.keep_on_top:
-            self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.config.keep_on_top)
 
     # ------------------------------------------------------------------
     # UI 構築
@@ -166,21 +218,10 @@ class MainWindow(QMainWindow):
         info_form.setSpacing(10)
         info_form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        font_lbl = QFont()
-        font_lbl.setPointSize(11)
-        font_lbl.setBold(True)
-
-        font_val = QFont()
-        font_val.setPointSize(13)
-        font_val.setBold(True)
-
-        font_notes = QFont()
-        font_notes.setPointSize(22)
-        font_notes.setBold(True)
-
-        font_time = QFont()
-        font_time.setPointSize(16)
-        font_time.setBold(True)
+        font_lbl = _bold_font(11)
+        font_val = _bold_font(13)
+        font_notes = _bold_font(22)
+        font_time = _bold_font(16)
 
         def make_row_label(text: str) -> QLabel:
             lbl = QLabel(text)
@@ -188,9 +229,22 @@ class MainWindow(QMainWindow):
             lbl.setStyleSheet("color: #aaaaaa;")
             return lbl
 
-        self.lbl_mode = QLabel(self.ui.status.waiting_game)
+        status = self.ui.status
+        self._mode_labels = {
+            DetectMode.play:             status.playing,
+            DetectMode.result:           status.result,
+            DetectMode.select:           status.select,
+            DetectMode.option:           status.option,
+            DetectMode.title:            status.title,
+            DetectMode.ticket:           status.ticket,
+            DetectMode.character_select: status.character_select,
+            DetectMode.exit:             status.exit,
+            DetectMode.loading:          status.loading,
+            DetectMode.unknown:          status.waiting_game,
+        }
+
+        self.lbl_mode = QLabel()
         self.lbl_mode.setFont(font_val)
-        self.lbl_mode.setStyleSheet("color: #aaaaaa; font-weight: bold;")
 
         self.lbl_uptime = QLabel("00:00:00")
         self.lbl_uptime.setFont(font_time)
@@ -231,13 +285,19 @@ class MainWindow(QMainWindow):
         self._statusbar.addPermanentWidget(self._lbl_mode)
         self._statusbar.addPermanentWidget(self._lbl_obs)
 
+        self._show_mode(DetectMode.unknown, in_statusbar=False)
+
     # ------------------------------------------------------------------
     # セットアップ
     # ------------------------------------------------------------------
 
     def _setup_obs(self):
-        self.obs_manager.set_config(self.config)
         self.obs_manager.connection_changed.connect(self._on_obs_connection_changed)
+        self._apply_obs_config()
+
+    def _apply_obs_config(self):
+        """設定 (キャプチャ方式・接続先) を OBS マネージャへ反映し、必要なら接続し直す。"""
+        self.obs_manager.set_config(self.config)
         if self.obs_manager.uses_obs_websocket():
             self.obs_manager.connect()
         else:
@@ -265,11 +325,8 @@ class MainWindow(QMainWindow):
             image = self.obs_manager.read_frame()
 
             if image is None:
-                status_text, _ = self.obs_manager.get_status()
-                self._lbl_game.setText(status_text)
-                self.lbl_mode.setText(self.ui.status.waiting_game)
-                self.lbl_mode.setStyleSheet("color: #aaaaaa; font-weight: bold;")
-                self._lbl_mode.setText("")
+                self._lbl_game.setText(self.obs_manager.get_status()[0])
+                self._show_mode(DetectMode.unknown, in_statusbar=False)
                 return
 
             mode = self.screen_reader.detect_mode(image)
@@ -278,101 +335,51 @@ class MainWindow(QMainWindow):
         except Exception:
             logger.error(traceback.format_exc())
 
+    def _show_mode(self, mode: DetectMode, in_statusbar: bool = True):
+        """現在のモード表示を更新する。"""
+        text = self._mode_labels[mode]
+        self.lbl_mode.setText(text)
+        self.lbl_mode.setStyleSheet(f"color: {_MODE_COLORS[mode]}; font-weight: bold;")
+        self._lbl_mode.setText(text if in_statusbar else "")
+
     def _handle_mode(self, mode: DetectMode, image):
-        # モード変化検出
         if mode != self.current_mode:
             self._on_mode_changed(self.current_mode, mode)
-
         self.current_mode = mode
 
-        # ステータス表示
-        mode_labels = {
-            DetectMode.play:             self.ui.status.playing,
-            DetectMode.result:           self.ui.status.result,
-            DetectMode.select:           self.ui.status.select,
-            DetectMode.option:           self.ui.status.option,
-            DetectMode.title:            self.ui.status.title,
-            DetectMode.ticket:           self.ui.status.ticket,
-            DetectMode.character_select: self.ui.status.character_select,
-            DetectMode.exit:             self.ui.status.exit,
-            DetectMode.loading:          self.ui.status.loading,
-            DetectMode.unknown:          self.ui.status.waiting_game,
-        }
-        mode_colors = {
-            DetectMode.play:             "#00e676",  # プレー中（緑）
-            DetectMode.result:           "#ffd600",  # リザルト（黄）
-            DetectMode.select:           "#40c4ff",  # 選曲中（水色）
-            DetectMode.option:           "#ff80ab",  # オプション（ピンク）
-            DetectMode.title:            "#b388ff",  # タイトル（紫）
-            DetectMode.ticket:           "#b388ff",  # チケット（紫）
-            DetectMode.character_select: "#b388ff",  # キャラセレクト（紫）
-            DetectMode.exit:             "#ff5252",  # 終了画面（赤）
-            DetectMode.loading:          "#ffab40",  # ロード中（オレンジ）
-            DetectMode.unknown:          "#aaaaaa",  # 待機中（グレー）
-        }
-        mode_text = mode_labels.get(mode, self.ui.status.waiting_game)
-        mode_color = mode_colors.get(mode, "#ffffff")
+        self._show_mode(mode)
+        self._lbl_game.setText(self.obs_manager.get_status()[0])
 
-        self.lbl_mode.setText(mode_text)
-        self.lbl_mode.setStyleSheet(f"color: {mode_color}; font-weight: bold;")
-        self._lbl_mode.setText(mode_text)
-
-        # ゲーム検出表示
-        status_text, _ = self.obs_manager.get_status()
-        self._lbl_game.setText(status_text)
-
-        # オプション画面時はオプション状態をスキャン
         if mode == DetectMode.option:
-            self.screen_reader.read_options(image)
-
-        # プレー画面の場合は判定を読み取る
-        if mode == DetectMode.play:
+            self._process_option(image)
+        elif mode == DetectMode.play:
             self._process_play(image)
-
-        # リザルト画面の場合は数値が安定するまで読み取りを続ける
-        if mode == DetectMode.result and self._result_pending:
+        elif mode == DetectMode.result and self._result_pending:
+            # 数値が安定するまで読み取りを続ける
             self._process_result(image)
 
     def _on_mode_changed(self, prev: DetectMode, curr: DetectMode):
         logger.info("モード変更: %s → %s", prev.name, curr.name)
+        for mode in _TRIGGER_MODES:
+            if curr == mode:
+                self._enter_mode(mode)
+                self._trigger_obs(f"{mode.name}_start")
+            if prev == mode:
+                self._leave_mode(mode)
+                self._trigger_obs(f"{mode.name}_end")
 
-        if curr == DetectMode.title:
-            self._trigger_obs("title_start")
-        if prev == DetectMode.title and curr != DetectMode.title:
-            self._trigger_obs("title_end")
-
-        if curr == DetectMode.ticket:
-            self._trigger_obs("ticket_start")
-        if prev == DetectMode.ticket and curr != DetectMode.ticket:
-            self._trigger_obs("ticket_end")
-
-        if curr == DetectMode.character_select:
-            self._trigger_obs("character_select_start")
-        if prev == DetectMode.character_select and curr != DetectMode.character_select:
-            self._trigger_obs("character_select_end")
-
-        if curr == DetectMode.select:
-            self._trigger_obs("select_start")
-        if prev == DetectMode.select and curr != DetectMode.select:
-            self._trigger_obs("select_end")
-
-        if curr == DetectMode.option:
-            self._trigger_obs("option_start")
-        if prev == DetectMode.option and curr != DetectMode.option:
-            self._trigger_obs("option_end")
-
-        if curr == DetectMode.play:
+    def _enter_mode(self, mode: DetectMode):
+        if mode == DetectMode.option:
+            self._option_values = None
+            self._option_stable = 0
+            self._option_frames = 0
+        elif mode == DetectMode.play:
             self._title_scanned = False
             self._title_frames = 0
             self.score_manager.reset_current_song()
-            self.screen_reader.reset_judge()
-            self.song_cool = self.song_great = self.song_good = self.song_bad = 0
-            self._trigger_obs("play_start")
-        if prev == DetectMode.play and curr != DetectMode.play:
-            self._trigger_obs("play_end")
-
-        if curr == DetectMode.result:
-            self._trigger_obs("result_start")
+            # 判定内訳はここではリセットしない。プレー画面の検出が一瞬途切れただけの場合に
+            # 数え直しにならないよう、累計値が 0 に戻ったことを見て曲の切り替わりを判断する
+        elif mode == DetectMode.result:
             # スコアの記録は数値が安定してから行う (_process_result)
             self._result_pending = True
             self._result_frames = 0
@@ -380,36 +387,49 @@ class MainWindow(QMainWindow):
             self._result_values = None
             self._result_image = None
 
-        if prev == DetectMode.result and curr != DetectMode.result:
+    def _leave_mode(self, mode: DetectMode):
+        if mode == DetectMode.result:
             # 安定を待っている間にリザルト画面を抜けた場合は、最後に読めた値で記録する
             if self._result_pending and self._result_image is not None:
                 self._save_result(self._result_image, self._result_values)
             self._result_pending = False
-            self._trigger_obs("result_end")
 
-        if curr == DetectMode.loading:
-            self._trigger_obs("loading_start")
-        if prev == DetectMode.loading and curr != DetectMode.loading:
-            self._trigger_obs("loading_end")
+    def _process_option(self, image):
+        """オプション選択画面の設定一覧を読み、続けて同じ値になったら反映する。"""
+        self._option_frames += 1
+        if (self._option_frames - 1) % _OPTION_SCAN_INTERVAL_FRAMES != 0:
+            return
 
-        if curr == DetectMode.exit:
-            self._trigger_obs("exit_start")
-        if prev == DetectMode.exit and curr != DetectMode.exit:
-            self._trigger_obs("exit_end")
+        values = self.screen_reader.read_options(image)
+        if not values:
+            self._option_values = None
+            self._option_stable = 0
+            return
+
+        self._option_stable = self._option_stable + 1 if values == self._option_values else 1
+        self._option_values = values
+        if self._option_stable != _OPTION_STABLE_READS:
+            return
+
+        # 読めなかった項目は現在の値を引き継ぐ
+        current = self.score_manager.current_options.to_dict()
+        if any(current.get(k) != v for k, v in values.items()):
+            self.score_manager.set_current_options(PopnOptions.from_dict({**current, **values}))
 
     def _process_play(self, image):
         # プレー開始直後に曲名・難易度区分を認識
         if not self._title_scanned:
             self._scan_play_song(image)
 
-        judge: PopnJudge = self.screen_reader.detect_judge(image)
-        if judge.notes > 0:
+        judge, restarted = self.screen_reader.detect_judge(image)
+        if restarted:
+            # 累計値が 0 に戻った = 次の曲が始まった。リザルトに到達しなかった曲
+            # （リタイア・リトライ）の分が残っていれば確定分へ繰り入れる
+            self._today_notes += self._song_judge.notes
+        changed = restarted or judge.notes != self._song_judge.notes
+        self._song_judge = judge
+        if changed:
             self._check_date_rollover()
-            self._today_notes += judge.notes
-            self.song_cool    += judge.cool
-            self.song_great   += judge.great
-            self.song_good    += judge.good
-            self.song_bad     += judge.bad
             self._update_display()
 
     def _scan_play_song(self, image):
@@ -421,10 +441,7 @@ class MainWindow(QMainWindow):
         song = self.screen_reader.read_play_song(image)
         if song.text and self.score_manager.identify_song(song.text, song.difficulty):
             self._title_scanned = True
-            title = self.score_manager.current_song_title
-            diff = PopnScoreRecord(difficulty=song.difficulty).difficulty_code
-            self._last_played_song = f"{title} [{diff}]" if diff else title
-            self.lbl_last_song.setText(self._last_played_song)
+            self._set_last_played_song(self.score_manager.current_song_title, song.difficulty)
         elif self._title_frames >= _TITLE_SCAN_INTERVAL_FRAMES * _TITLE_SCAN_MAX_TRIES:
             self._title_scanned = True
             logger.warning("曲を特定できませんでした (読み取り結果: '%s' / %s)", song.text, song.difficulty)
@@ -458,15 +475,9 @@ class MainWindow(QMainWindow):
         """リザルト画面の読み取り結果をスコア履歴に記録する。"""
         self._result_pending = False
         try:
-            current_judge = PopnJudge(
-                cool=self.song_cool,
-                great=self.song_great,
-                good=self.song_good,
-                bad=self.song_bad,
-            )
             record = self.screen_reader.read_result(
                 image,
-                live_judge=current_judge,
+                live_judge=self._song_judge,
                 options=self.score_manager.current_options,
                 title=self.score_manager.current_song_title,
                 level=self.score_manager.current_level,
@@ -475,27 +486,58 @@ class MainWindow(QMainWindow):
             )
             saved = self.score_manager.add_record(record)
             if saved:
+                # プレー中の暫定値を捨て、リザルト画面の値を本日の打鍵数に反映する
+                self._check_date_rollover()
+                self._today_notes += record.cool + record.great + record.good
+                self._reset_song_judge()
+                self._update_display()
                 chart_info = f"[Lv{record.level} {record.difficulty_code}] " if record.level else f"[{record.difficulty_code}] "
                 msg = f"スコア保存: {chart_info}{record.title} | {record.score}点 ({record.options.to_summary()})"
                 self._statusbar.showMessage(msg, 6000)
+                self._save_result_screenshot(image, record)
 
             # 最後にプレイした曲の表示を更新
             song_title = record.title if record.title != "Unknown" else self.score_manager.current_song_title
             if song_title and song_title != "Unknown":
-                diff_str = f" [{record.difficulty_code}]" if record.difficulty_code else ""
-                self._last_played_song = f"{song_title}{diff_str}"
-                self.lbl_last_song.setText(self._last_played_song)
+                self._set_last_played_song(song_title, record.difficulty)
         except Exception as e:
             logger.error("スコア保存処理エラー: %s", e)
 
+    def _save_result_screenshot(self, image, record):
+        """設定に応じて、記録したリザルト画面のスクリーンショットを保存する。"""
+        mode = self.config.result_screenshot_mode
+        if mode not in ("all", "best"):
+            return
+        if mode == "best" and not self.score_manager.is_personal_best(record):
+            return
+        try:
+            folder = self.config.result_screenshot_dir
+            os.makedirs(folder, exist_ok=True)
+            played_at = datetime.strptime(record.timestamp, "%Y-%m-%d %H:%M:%S")
+            # ファイル名に使えない文字を置き換える
+            title = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", record.title).strip(" .") or "Unknown"
+            name = f"{played_at:%Y%m%d_%H%M%S}_{title}_{record.difficulty_code}_{record.score}.png"
+            path = os.path.join(folder, name)
+            image.save(path)
+            logger.info("リザルトのスクリーンショットを保存: %s", path)
+        except Exception as e:
+            logger.error("スクリーンショット保存エラー: %s", e)
+
+    def _set_last_played_song(self, title: str, difficulty: str):
+        self._last_played_song = format_song(title, difficulty)
+        self.lbl_last_song.setText(self._last_played_song)
+
+    def _reset_song_judge(self):
+        """現在の曲の判定内訳（プレー中の暫定値）を捨てる。"""
+        self.screen_reader.reset_judge()
+        self._song_judge = PopnJudge()
+
     def _update_display(self):
-        self.lbl_today_notes.setText(f"{self._today_notes:,}")
+        self.lbl_today_notes.setText(f"{self._today_notes + self._song_judge.notes:,}")
 
     def _update_uptime(self):
-        elapsed = int(time.time() - self._start_time)
-        hours = elapsed // 3600
-        minutes = (elapsed % 3600) // 60
-        seconds = elapsed % 60
+        minutes, seconds = divmod(int(time.time() - self._start_time), 60)
+        hours, minutes = divmod(minutes, 60)
         self.lbl_uptime.setText(f"{hours:02d}:{minutes:02d}:{seconds:02d}")
 
     def _check_date_rollover(self):
@@ -505,9 +547,20 @@ class MainWindow(QMainWindow):
             self._today_notes = self.score_manager.get_today_notes(now_date)
             self._update_display()
 
+    def _update_cpu_affinity(self):
+        """Lively の起動を見つけたら CPU 割り当てを 1 コアに絞る（設定で有効な場合のみ）。"""
+        try:
+            cpu = self.cpu_affinity.update(
+                self.config.lively_single_cpu, self.config.direct_capture_exe
+            )
+            if cpu is not None:
+                self._statusbar.showMessage(f"Lively の CPU 割り当てを CPU{cpu} のみに変更しました", 6000)
+        except Exception:
+            logger.error(traceback.format_exc())
+
     def _reset_counts(self):
         self._today_notes = 0
-        self.song_cool = self.song_great = self.song_good = self.song_bad = 0
+        self._reset_song_judge()
         self._update_display()
 
     # ------------------------------------------------------------------
@@ -553,17 +606,9 @@ class MainWindow(QMainWindow):
         if dlg.exec():
             self.config.save_config()
             # キャプチャ方式の変更を反映
-            self.obs_manager.set_config(self.config)
-            if self.obs_manager.uses_obs_websocket():
-                self.obs_manager.connect()
-            else:
-                self.obs_manager.disconnect_obs()
-            # 最前面フラグの更新
-            flags = self.windowFlags()
-            if self.config.keep_on_top:
-                self.setWindowFlags(flags | Qt.WindowType.WindowStaysOnTopHint)
-            else:
-                self.setWindowFlags(flags & ~Qt.WindowType.WindowStaysOnTopHint)
+            self._apply_obs_config()
+            # 最前面フラグの更新 (フラグを変えるとウィンドウが隠れるので表示し直す)
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.config.keep_on_top)
             self.show()
 
     def _open_obs_settings(self):
@@ -571,32 +616,16 @@ class MainWindow(QMainWindow):
         dlg = OBSControlDialog(self.config, self.obs_manager, self)
         if dlg.exec():
             # 接続設定が変わっている可能性があるので再接続
-            self.obs_manager.set_config(self.config)
-            if self.obs_manager.uses_obs_websocket():
-                self.obs_manager.connect()
-            else:
-                self.obs_manager.disconnect_obs()
+            self._apply_obs_config()
 
     def _open_score_history(self):
         from src.score_dialog import ScoreHistoryDialog
-        dlg = ScoreHistoryDialog(self.score_manager, self)
+        dlg = ScoreHistoryDialog(self.score_manager, self, config=self.config)
         dlg.exec()
 
     def _export_csv(self):
-        from PySide6.QtWidgets import QFileDialog, QMessageBox
-        path, _ = QFileDialog.getSaveFileName(
-            self,
-            "CSVエクスポート先の選択",
-            self.config.score_csv_path,
-            "CSV Files (*.csv);;All Files (*)",
-        )
-        if not path:
-            return
-        try:
-            self.score_manager.export_csv(path)
-            QMessageBox.information(self, "完了", f"CSVファイルを出力しました:\n{path}")
-        except Exception as e:
-            QMessageBox.critical(self, "エラー", f"CSV出力に失敗しました:\n{e}")
+        from src.score_dialog import export_csv_with_dialog
+        export_csv_with_dialog(self, self.score_manager)
 
     # ------------------------------------------------------------------
     # 終了処理
@@ -604,6 +633,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self._timer.stop()
+        self._affinity_timer.stop()
         # ウィンドウ位置・サイズを保存
         geo = self.geometry()
         self.config.main_window_x      = geo.x()
@@ -619,8 +649,9 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setApplicationName("popn_daken_counter")
-    app.setApplicationDisplayName("pop'n music Lively 打鍵カウンタ")
+    app.setApplicationName("pop_lively_support_tool")
+    app.setApplicationDisplayName("pop'n music Lively サポートツール")
+    app.setWindowIcon(QIcon("src/icon.ico"))
 
     window = MainWindow()
     window.show()

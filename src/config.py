@@ -1,4 +1,4 @@
-"""pop'n music Lively 打鍵カウンタ 設定クラス"""
+"""pop_lively_support_tool 設定クラス"""
 from __future__ import annotations
 
 import json
@@ -10,6 +10,36 @@ from src.logger import get_logger
 logger = get_logger(__name__)
 
 _CONFIG_FILE = "config.json"
+
+# 設定ファイルに保存する項目 (= Config の属性名)。保存順
+_KEYS = (
+    "capture_method",
+    "direct_capture_exe",
+    "direct_capture_title",
+    "direct_capture_all_monitors",
+    "websocket_host",
+    "websocket_port",
+    "websocket_password",
+    "monitor_source_name",
+    "obs_control_settings",
+    "obs_scene_collection",
+    "language",
+    "keep_on_top",
+    "lively_single_cpu",
+    "websocket_data_port",
+    "score_csv_path",
+    "score_db_path",
+    "score_history_columns",
+    "result_screenshot_mode",
+    "result_screenshot_dir",
+)
+# 設定ファイルの "window" 以下のキー → Config の属性名
+_WINDOW_KEYS = {
+    "x": "main_window_x",
+    "y": "main_window_y",
+    "width": "main_window_width",
+    "height": "main_window_height",
+}
 
 
 class Config:
@@ -44,6 +74,8 @@ class Config:
         self.main_window_y: int = 100
         self.main_window_width: int = 480
         self.main_window_height: int = 340
+        self.lively_single_cpu: bool = False
+        """Lively の CPU 割り当てを 1 コアに絞る（ロード時間短縮）"""
 
         # データ配信ポート（IIDX ツールと競合しないよう別ポート）
         self.websocket_data_port: int = 8768
@@ -52,6 +84,14 @@ class Config:
         self.score_csv_path: str = "popn_score.csv"
         # スコア管理 SQLite DB パス
         self.score_db_path: str = "popn.db"
+        # スコア履歴ビューの列設定 (並び順 / 非表示列 / 列幅)
+        self.score_history_columns: dict = {}
+
+        # リザルト画面のスクリーンショット
+        self.result_screenshot_mode: str = "off"
+        """'off'=無効 / 'all'=毎回保存 / 'best'=自己ベスト更新時のみ保存"""
+        self.result_screenshot_dir: str = "result_screenshots"
+        """スクリーンショットの保存先フォルダ"""
 
         self.load_config()
         self.save_config()
@@ -59,62 +99,26 @@ class Config:
     # ------------------------------------------------------------------
 
     def load_config(self) -> None:
+        """設定ファイルを読み込む。ファイルに無い項目は既定値のまま。"""
         if not os.path.exists(self.config_file):
             return
         try:
             with open(self.config_file, "r", encoding="utf-8") as f:
                 d = json.load(f)
 
-            self.capture_method            = d.get("capture_method", "direct_window")
-            self.direct_capture_exe        = d.get("direct_capture_exe", "popnLively.exe")
-            self.direct_capture_title      = d.get("direct_capture_title", "pop'n music Lively")
-            self.direct_capture_all_monitors = d.get("direct_capture_all_monitors", False)
-            self.websocket_host            = d.get("websocket_host", "localhost")
-            self.websocket_port            = d.get("websocket_port", 4444)
-            self.websocket_password        = d.get("websocket_password", "")
-            self.monitor_source_name       = d.get("monitor_source_name", "")
-            self.obs_control_settings      = d.get("obs_control_settings", [])
-            self.obs_scene_collection      = d.get("obs_scene_collection", "")
-            self.language                  = d.get("language", "ja")
-            self.keep_on_top               = d.get("keep_on_top", False)
-            self.websocket_data_port       = d.get("websocket_data_port", 8768)
-            self.score_csv_path            = d.get("score_csv_path", "popn_score.csv")
-            self.score_db_path             = d.get("score_db_path", "popn.db")
-
-            w = d.get("window", {})
-            self.main_window_x      = w.get("x",      100)
-            self.main_window_y      = w.get("y",      100)
-            self.main_window_width  = w.get("width",  480)
-            self.main_window_height = w.get("height", 340)
+            for key in _KEYS:
+                setattr(self, key, d.get(key, getattr(self, key)))
+            window = d.get("window", {})
+            for key, attr in _WINDOW_KEYS.items():
+                setattr(self, attr, window.get(key, getattr(self, attr)))
 
         except Exception:
             logger.error(traceback.format_exc())
 
     def save_config(self) -> None:
         try:
-            d = {
-                "capture_method":             self.capture_method,
-                "direct_capture_exe":         self.direct_capture_exe,
-                "direct_capture_title":       self.direct_capture_title,
-                "direct_capture_all_monitors": self.direct_capture_all_monitors,
-                "websocket_host":             self.websocket_host,
-                "websocket_port":             self.websocket_port,
-                "websocket_password":         self.websocket_password,
-                "monitor_source_name":        self.monitor_source_name,
-                "obs_control_settings":       self.obs_control_settings,
-                "obs_scene_collection":       self.obs_scene_collection,
-                "language":                   self.language,
-                "keep_on_top":                self.keep_on_top,
-                "websocket_data_port":        self.websocket_data_port,
-                "score_csv_path":             self.score_csv_path,
-                "score_db_path":              self.score_db_path,
-                "window": {
-                    "x":      self.main_window_x,
-                    "y":      self.main_window_y,
-                    "width":  self.main_window_width,
-                    "height": self.main_window_height,
-                },
-            }
+            d = {key: getattr(self, key) for key in _KEYS}
+            d["window"] = {key: getattr(self, attr) for key, attr in _WINDOW_KEYS.items()}
             with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(d, f, ensure_ascii=False, indent=2)
         except Exception:

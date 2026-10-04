@@ -18,6 +18,7 @@ logger = get_logger(__name__)
 _LANDSCAPE_SIZE = (1920, 1080)
 _MONITORINFOF_PRIMARY = 0x00000001
 _SRCCOPY = 0x00CC0020
+_HALFTONE = 4
 _DIB_RGB_COLORS = 0
 _MONITOR_DEFAULTTONEAREST = 0x00000002
 _TARGET_NOT_FOUND_PREFIX = "対象ウィンドウが見つかりません"
@@ -483,6 +484,12 @@ class DirectWindowCapture:
         if width <= 0 or height <= 0:
             return None
 
+        # 1920x1080 より大きい画面は GDI 側で縮小しながら取り込む (全画素を取り出してから縮小すると遅い)
+        src_width, src_height = width, height
+        shrink = width > _LANDSCAPE_SIZE[0] and height > _LANDSCAPE_SIZE[1]
+        if shrink:
+            width, height = _LANDSCAPE_SIZE
+
         gdi32 = ctypes.windll.gdi32
         screen_dc = gdi32.CreateDCW("DISPLAY", None, None, None)
         if not screen_dc:
@@ -497,7 +504,14 @@ class DirectWindowCapture:
                 return None
 
             gdi32.SelectObject(memory_dc, bitmap)
-            if not gdi32.BitBlt(memory_dc, 0, 0, width, height, screen_dc, left, top, _SRCCOPY):
+            if shrink:
+                gdi32.SetStretchBltMode(memory_dc, _HALFTONE)
+                gdi32.SetBrushOrgEx(memory_dc, 0, 0, None)
+                if not gdi32.StretchBlt(
+                    memory_dc, 0, 0, width, height, screen_dc, left, top, src_width, src_height, _SRCCOPY
+                ):
+                    return None
+            elif not gdi32.BitBlt(memory_dc, 0, 0, width, height, screen_dc, left, top, _SRCCOPY):
                 return None
 
             bitmap_info = _BITMAPINFO()

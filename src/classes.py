@@ -1,156 +1,99 @@
 """pop'n music Lively 専用データクラス・列挙型定義"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 
+from src.option_master import OPTION_DEFAULTS, OPTION_KEYS, OPTION_LABELS
 
+# 難易度区分コード (L/N/H/E) → 曲テーブルのレベル列
+DIFFICULTY_LEVEL_COLUMNS = {"L": "easy", "N": "normal", "H": "hyper", "E": "ex"}
+
+_DIFFICULTY_CODES = {
+    "EASY": "L", "LIGHT": "L", "L": "L",
+    "NORMAL": "N", "N": "N",
+    "HYPER": "H", "H": "H",
+    "EX": "E", "E": "E",
+}
+
+# 等速のハイスピード。旧データでは "OFF" / "x1.0" と記録されている
+_HISPEED_OFF = ("OFF", "1.0", "x1.0")
+
+
+def difficulty_code(difficulty: str) -> str:
+    """難易度区分 (EASY / NORMAL / HYPER / EX など) をコード (L/N/H/E) にする。
+
+    該当しない文字列は大文字にしてそのまま返す。
+    """
+    d = str(difficulty).strip().upper()
+    return _DIFFICULTY_CODES.get(d, d)
+
+
+def format_song(title: str, difficulty: str = "") -> str:
+    """「曲名 [難易度区分コード]」形式の表示用文字列"""
+    code = difficulty_code(difficulty)
+    return f"{title} [{code}]" if code else title
+
+
+@dataclass
 class PopnJudge:
-    """1フレームで検出した判定内訳の増分"""
-
-    def __init__(self, cool: int = 0, great: int = 0, good: int = 0, bad: int = 0):
-        self.cool  = cool
-        self.great = great
-        self.good  = good
-        self.bad   = bad
+    """1 曲分の判定内訳"""
+    cool: int = 0
+    great: int = 0
+    good: int = 0
+    bad: int = 0
 
     @property
     def notes(self) -> int:
-        """打鍵数 = COOL + GREAT + GOOD + BAD（全判定の合計）"""
-        return self.cool + self.great + self.good + self.bad
-
-    def __repr__(self):
-        return (
-            f"PopnJudge(cool={self.cool}, great={self.great}, "
-            f"good={self.good}, bad={self.bad})"
-        )
+        """打鍵数 = COOL + GREAT + GOOD（BAD は基本的に見逃しなので含めない）"""
+        return self.cool + self.great + self.good
 
 
+@dataclass(eq=False, repr=False)
 class PopnOptions:
-    """使用オプション管理クラス
+    """使用オプション。
 
-    対象オプション項目:
-    - HI-SPEED
-    - POP-KUN
-    - GAUGE TYPE
-    - GUIDE SE
-    - RANDOM
-    - JUDGE+
-    - HIDDEN
-    - SUDDEN
-    - OJAMA1
-    - OJAMA2
-    - AUTO
+    項目 (属性名 = src/option_master.py の OPTION_KEYS) と各項目の選択肢は
+    src/option_master.py を参照。
     """
-
-    def __init__(
-        self,
-        hispeed: str = "1.0",
-        popkun: str = "NORMAL",
-        gauge_type: str = "NORMAL",
-        guide_se: str = "OFF",
-        random: str = "OFF",
-        judge_plus: str = "OFF",
-        hidden: str = "OFF",
-        sudden: str = "OFF",
-        ojama1: str = "OFF",
-        ojama2: str = "OFF",
-        auto: str = "OFF",
-        extra: dict | None = None,
-        # 旧プロパティ名との後方互換用
-        gauge: str | None = None,
-        arrangement: str | None = None,
-    ):
-        self.hispeed: str = hispeed
-        self.popkun: str = popkun
-        self.gauge_type: str = gauge if gauge is not None else gauge_type
-        self.guide_se: str = guide_se
-        self.random: str = arrangement if arrangement is not None else random
-        self.judge_plus: str = judge_plus
-        self.hidden: str = hidden
-        self.sudden: str = sudden
-        self.ojama1: str = ojama1
-        self.ojama2: str = ojama2
-        self.auto: str = auto
-        self.extra: dict = extra if extra is not None else {}
-
-    @property
-    def gauge(self) -> str:
-        """互換用プロパティ"""
-        return self.gauge_type
-
-    @gauge.setter
-    def gauge(self, val: str) -> None:
-        self.gauge_type = val
-
-    @property
-    def arrangement(self) -> str:
-        """互換用プロパティ"""
-        return self.random
-
-    @arrangement.setter
-    def arrangement(self, val: str) -> None:
-        self.random = val
+    hispeed: str = OPTION_DEFAULTS["hispeed"]
+    popkun: str = OPTION_DEFAULTS["popkun"]
+    gauge_type: str = OPTION_DEFAULTS["gauge_type"]
+    guide_se: str = OPTION_DEFAULTS["guide_se"]
+    random: str = OPTION_DEFAULTS["random"]
+    judge_plus: str = OPTION_DEFAULTS["judge_plus"]
+    hidden: str = OPTION_DEFAULTS["hidden"]
+    sudden: str = OPTION_DEFAULTS["sudden"]
+    ojama1: str = OPTION_DEFAULTS["ojama1"]
+    ojama2: str = OPTION_DEFAULTS["ojama2"]
+    ojama1_zutto: str = OPTION_DEFAULTS["ojama1_zutto"]
+    ojama2_zutto: str = OPTION_DEFAULTS["ojama2_zutto"]
+    auto: str = OPTION_DEFAULTS["auto"]
+    extra: dict = field(default_factory=dict)
 
     def to_summary(self) -> str:
-        """画面表示および要約文字列"""
+        """既定値から変更されている項目だけを並べた要約文字列"""
         parts = []
-        if self.hispeed and self.hispeed not in ("OFF", "1.0", "x1.0"):
-            parts.append(f"HI-SPEED:{self.hispeed}")
-        if self.popkun and self.popkun != "NORMAL":
-            parts.append(f"POP-KUN:{self.popkun}")
-        if self.gauge_type and self.gauge_type != "NORMAL":
-            parts.append(f"GAUGE TYPE:{self.gauge_type}")
-        if self.guide_se and self.guide_se != "OFF":
-            parts.append(f"GUIDE SE:{self.guide_se}")
-        if self.random and self.random != "OFF":
-            parts.append(f"RANDOM:{self.random}")
-        if self.judge_plus and self.judge_plus != "OFF":
-            parts.append(f"JUDGE+:{self.judge_plus}")
-        if self.hidden and self.hidden != "OFF":
-            parts.append(f"HIDDEN:{self.hidden}")
-        if self.sudden and self.sudden != "OFF":
-            parts.append(f"SUDDEN:{self.sudden}")
-        if self.ojama1 and self.ojama1 != "OFF":
-            parts.append(f"OJAMA1:{self.ojama1}")
-        if self.ojama2 and self.ojama2 != "OFF":
-            parts.append(f"OJAMA2:{self.ojama2}")
-        if self.auto and self.auto != "OFF":
-            parts.append(f"AUTO:{self.auto}")
-        for k, v in self.extra.items():
-            if v:
-                parts.append(f"{k}:{v}")
+        for key in OPTION_KEYS:
+            value = getattr(self, key)
+            if not value or value == OPTION_DEFAULTS[key]:
+                continue
+            if key == "hispeed" and value in _HISPEED_OFF:
+                continue
+            parts.append(f"{OPTION_LABELS[key]}:{value}")
+        parts.extend(f"{k}:{v}" for k, v in self.extra.items() if v)
         return " / ".join(parts) if parts else "NORMAL"
 
     def to_dict(self) -> dict:
-        return {
-            "hispeed": self.hispeed,
-            "popkun": self.popkun,
-            "gauge_type": self.gauge_type,
-            "guide_se": self.guide_se,
-            "random": self.random,
-            "judge_plus": self.judge_plus,
-            "hidden": self.hidden,
-            "sudden": self.sudden,
-            "ojama1": self.ojama1,
-            "ojama2": self.ojama2,
-            "auto": self.auto,
-            "extra": dict(self.extra),
-        }
+        return {**{key: getattr(self, key) for key in OPTION_KEYS}, "extra": dict(self.extra)}
 
     @classmethod
     def from_dict(cls, d: dict) -> "PopnOptions":
         if not isinstance(d, dict):
             return cls()
         return cls(
-            hispeed=d.get("hispeed", "1.0"),
-            popkun=d.get("popkun", "NORMAL"),
-            gauge_type=d.get("gauge_type") or d.get("gauge", "NORMAL"),
-            guide_se=d.get("guide_se", "OFF"),
-            random=d.get("random") or d.get("arrangement", "OFF"),
-            judge_plus=d.get("judge_plus", "OFF"),
-            hidden=d.get("hidden", "OFF"),
-            sudden=d.get("sudden", "OFF"),
-            ojama1=d.get("ojama1", "OFF"),
-            ojama2=d.get("ojama2", "OFF"),
-            auto=d.get("auto", "OFF"),
+            **{key: d.get(key, OPTION_DEFAULTS[key]) for key in OPTION_KEYS},
             extra=d.get("extra", {}),
         )
 
@@ -158,40 +101,32 @@ class PopnOptions:
         return f"PopnOptions({self.to_summary()})"
 
 
+@dataclass(eq=False)
 class PopnScoreRecord:
     """1プレーごとのスコア記録クラス"""
+    title: str = "Unknown"
+    level: int | str = ""
+    difficulty: str = ""
+    score: int = 0
+    cool: int = 0
+    great: int = 0
+    good: int = 0
+    bad: int = 0
+    combo: int = 0
+    options: PopnOptions = field(default_factory=PopnOptions)
+    timestamp: str = ""
+    """プレー日時。省略時は現在時刻"""
+    music_id: str = ""
+    record_id: int | None = None
+    genre: str = ""
+    artist: str = ""
+    ver: str = ""
+    modified: bool = False
+    """記録後にスコア内容を手動修正したか"""
 
-    def __init__(
-        self,
-        title: str = "Unknown",
-        level: int | str = "",
-        difficulty: str = "",
-        score: int = 0,
-        cool: int = 0,
-        great: int = 0,
-        good: int = 0,
-        bad: int = 0,
-        combo: int = 0,
-        options: PopnOptions | None = None,
-        timestamp: str = "",
-        music_id: str = "",
-        record_id: int | None = None,
-    ):
-        from datetime import datetime
-
-        self.title: str = title
-        self.level: int | str = level
-        self.difficulty: str = difficulty
-        self.score: int = score
-        self.cool: int = cool
-        self.great: int = great
-        self.good: int = good
-        self.bad: int = bad
-        self.combo: int = combo
-        self.options: PopnOptions = options if options is not None else PopnOptions()
-        self.timestamp: str = timestamp or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.music_id: str = music_id
-        self.record_id: int | None = record_id
+    def __post_init__(self):
+        if not self.timestamp:
+            self.timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     @property
     def total_notes(self) -> int:
@@ -199,62 +134,11 @@ class PopnScoreRecord:
 
     @property
     def difficulty_code(self) -> str:
-        """難易度区分コード (L/N/H/E) を返す。
-        L: EASY / Light
-        N: NORMAL
-        H: HYPER
-        E: EX
-        """
-        d = str(self.difficulty).strip().upper()
-        if d in ("EX", "E"):
-            return "E"
-        elif d in ("HYPER", "H"):
-            return "H"
-        elif d in ("NORMAL", "N"):
-            return "N"
-        elif d in ("EASY", "LIGHT", "L"):
-            return "L"
-        return d or ""
-
-    def to_dict(self) -> dict:
-        return {
-            "title": self.title,
-            "level": self.level,
-            "difficulty": self.difficulty,
-            "score": self.score,
-            "cool": self.cool,
-            "great": self.great,
-            "good": self.good,
-            "bad": self.bad,
-            "combo": self.combo,
-            "options": self.options.to_dict(),
-            "timestamp": self.timestamp,
-            "music_id": self.music_id,
-            "record_id": self.record_id,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "PopnScoreRecord":
-        return cls(
-            title=d.get("title", "Unknown"),
-            level=d.get("level", ""),
-            difficulty=d.get("difficulty", "E"),
-            score=d.get("score", 0),
-            cool=d.get("cool", 0),
-            great=d.get("great", 0),
-            good=d.get("good", 0),
-            bad=d.get("bad", 0),
-            combo=d.get("combo", 0),
-            options=PopnOptions.from_dict(d.get("options", {})),
-            timestamp=d.get("timestamp", ""),
-            music_id=d.get("music_id", ""),
-            record_id=d.get("record_id"),
-        )
+        """難易度区分コード (L: EASY / N: NORMAL / H: HYPER / E: EX)"""
+        return difficulty_code(self.difficulty)
 
     def to_csv_row(self) -> list:
-        """CSV 1行分のリスト。
-        指定順序: レベル, 曲名, 難易度区分 (L/N/H/E), SCORE, COOL, GREAT, GOOD, BAD, COMBO, 各種オプション..., プレー日時
-        """
+        """CSV 1行分のリスト。列順は src/db.py の CSV_HEADERS"""
         return [
             self.level if self.level else "",
             self.title,
@@ -265,17 +149,7 @@ class PopnScoreRecord:
             self.good,
             self.bad,
             self.combo,
-            self.options.hispeed,
-            self.options.popkun,
-            self.options.gauge_type,
-            self.options.guide_se,
-            self.options.random,
-            self.options.judge_plus,
-            self.options.hidden,
-            self.options.sudden,
-            self.options.ojama1,
-            self.options.ojama2,
-            self.options.auto,
+            *(getattr(self.options, key) for key in OPTION_KEYS),
             self.timestamp,
         ]
 

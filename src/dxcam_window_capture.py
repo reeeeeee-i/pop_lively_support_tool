@@ -12,12 +12,14 @@ from PIL import Image
 
 from src.config import Config
 from src.direct_window_capture import DirectWindowCapture
+from src.hdr_monitor import is_hdr_monitor
 from src.logger import get_logger
 
 logger = get_logger(__name__)
 
 _LANDSCAPE_SIZE = (1920, 1080)
 _MONITOR_DEFAULTTONEAREST = 0x00000002
+_HDR_CHECK_INTERVAL_SEC = 3.0   # 対象モニターの HDR 有効状態を調べ直す間隔
 
 
 class DxcamWindowCapture:
@@ -34,6 +36,8 @@ class DxcamWindowCapture:
         self.read_attempt_count = 0
         self._next_error_log_at = 0.0
         self._next_start_attempt_at = 0.0
+        self._hdr = False
+        self._next_hdr_check_at = 0.0
 
     def set_config(self, config: Config) -> None:
         self.config = config
@@ -43,6 +47,7 @@ class DxcamWindowCapture:
         self.has_successful_frame = False
         self.read_attempt_count = 0
         self._next_start_attempt_at = 0.0
+        self._next_hdr_check_at = 0.0
 
     def close(self) -> None:
         camera = self.camera
@@ -70,6 +75,14 @@ class DxcamWindowCapture:
             self.last_error = ""
 
     def read_frame(self) -> Image.Image | None:
+        if self._is_hdr_monitor():
+            # HDR が有効なモニターでは DXGI の取り込み結果が白飛びし、判定内訳バーなど
+            # 色の濃淡で読む表示を読めなくなるので、色が正しく取れる GDI で取り込む
+            image = self.window.read_frame()
+            self.last_error = self.window.last_error
+            self.has_successful_frame = self.window.has_successful_frame
+            return image
+
         frame = self._grab_frame()
         if frame is None:
             return None
@@ -80,6 +93,24 @@ class DxcamWindowCapture:
 
         image = Image.fromarray(cropped).convert("RGB")
         return self._normalize_size(image)
+
+    def _is_hdr_monitor(self) -> bool:
+        """対象ウィンドウのあるモニターで HDR が有効かどうか (一定間隔で調べ直す)。"""
+        now = time.monotonic()
+        if now < self._next_hdr_check_at:
+            return self._hdr
+        self._next_hdr_check_at = now + _HDR_CHECK_INTERVAL_SEC
+
+        hwnd = self.window._ensure_window() if sys.platform.startswith("win") else None
+        hdr = bool(hwnd) and is_hdr_monitor(self._monitor_from_window(hwnd))
+        if hdr != self._hdr:
+            self._hdr = hdr
+            if hdr:
+                logger.info("対象モニターで HDR が有効なため、GDI で取り込みます")
+                self.close()
+            else:
+                logger.info("対象モニターの HDR が無効になったため、DXCAM で取り込みます")
+        return hdr
 
     def _crop_client_area(self, frame: np.ndarray) -> np.ndarray | None:
         if not self.hwnd or not self.window._is_window_usable(self.hwnd):

@@ -1,4 +1,4 @@
-"""pop'n music Lively 打鍵カウンタ - cx_Freeze ビルド設定
+"""pop_lively_support_tool - cx_Freeze ビルド設定
 G:\\Download\\inf_daken_counter の構成をベースに作成
 """
 
@@ -40,6 +40,10 @@ except ImportError:
 # 設定ファイル・関連ファイル
 if os.path.exists("config.json"):
     include_files.append(("config.json", "config.json"))
+
+# 曲リスト (初回起動時に曲テーブルへ取り込む。無いと曲の特定・曲の選択ができない)
+if os.path.exists("popn_music_list.json"):
+    include_files.append(("popn_music_list.json", "popn_music_list.json"))
 
 if os.path.exists("README.md"):
     include_files.append(("README.md", "README.md"))
@@ -90,6 +94,7 @@ build_exe_options = {
         "src.classes",
         "src.config",
         "src.config_dialog",
+        "src.cpu_affinity",
         "src.define",
         "src.direct_window_capture",
         "src.dxcam_window_capture",
@@ -101,6 +106,9 @@ build_exe_options = {
         "src.result_reader",
         "src.song_reader",
         "src.digit_templates",
+        "src.judge_reader",
+        "src.judge_templates",
+        "src.hdr_monitor",
         "src.score_manager",
         "src.score_dialog",
         "src.ui_jp",
@@ -141,7 +149,7 @@ build_exe_options = {
     "zip_include_packages": [],
     "zip_exclude_packages": ["obsws_python"],
     "optimize": 2,
-    "build_exe": "dist/popn_daken_counter",
+    "build_exe": "dist/pop_lively_support_tool",
 }
 
 # 実行形式ベース
@@ -151,19 +159,19 @@ if sys.platform == "win32":
 
 executables = [
     Executable(
-        script="popn_counter.pyw",
+        script="pop_lively_support_tool.pyw",
         base=base,
-        target_name="popn_counter.exe",
+        target_name="pop_lively_support_tool.exe",
         icon=icon_path,
-        shortcut_name="popn_counter",
+        shortcut_name="pop_lively_support_tool",
         shortcut_dir="DesktopFolder",
     )
 ]
 
 setup(
-    name="popn_daken_counter",
+    name="pop_lively_support_tool",
     version="1.0.0",
-    description="pop'n music Lively 打鍵カウンタ",
+    description="pop_lively_support_tool",
     options={
         "build_exe": build_exe_options,
     },

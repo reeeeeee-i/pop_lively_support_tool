@@ -98,10 +98,7 @@ class OBSWebSocketManager(QObject):
         self._next_direct_capture_probe_at = 0.0
 
     def _direct_capture_class(self):
-        if (
-            self.config and
-            getattr(self.config, "capture_method", "direct_window") == "direct_window_legacy"
-        ):
+        if self.config and self.config.capture_method == "direct_window_legacy":
             return DirectWindowCapture
         return DxcamWindowCapture
 
@@ -112,16 +109,7 @@ class OBSWebSocketManager(QObject):
     def is_direct_capture(self) -> bool:
         return bool(
             self.config and
-            getattr(self.config, "capture_method", "direct_window")
-            in ("direct_window", "direct_window_legacy")
-        )
-
-    def is_obs_control_enabled(self) -> bool:
-        if not self.config:
-            return False
-        return bool(
-            getattr(self.config, "obs_control_settings", []) or
-            getattr(self.config, "obs_scene_collection", "")
+            self.config.capture_method in ("direct_window", "direct_window_legacy")
         )
 
     def uses_obs_websocket(self) -> bool:
@@ -130,18 +118,11 @@ class OBSWebSocketManager(QObject):
         if not self.is_direct_capture():
             return True
         return bool(
-            getattr(self.config, "obs_control_settings", []) or
-            getattr(self.config, "obs_scene_collection", "") or
-            str(getattr(self.config, "websocket_password", "")).strip() or
-            str(getattr(self.config, "monitor_source_name", "")).strip()
+            self.config.obs_control_settings or
+            self.config.obs_scene_collection or
+            str(self.config.websocket_password).strip() or
+            str(self.config.monitor_source_name).strip()
         )
-
-    def is_capture_ready(self) -> bool:
-        if not self.config:
-            return False
-        if self.is_direct_capture():
-            return True
-        return self.is_connected and self.is_monitor_source_configured()
 
     def is_monitor_source_configured(self) -> bool:
         if not self.config:
@@ -157,15 +138,29 @@ class OBSWebSocketManager(QObject):
     # 接続
     # ------------------------------------------------------------------
 
+    def _open_client(self) -> None:
+        """設定の接続先に接続する。失敗時は例外を送出する。"""
+        self.client = ReqClient(
+            host=self.config.websocket_host,
+            port=self.config.websocket_port,
+            password=self.config.websocket_password,
+            timeout=5,
+        )
+        self.client.get_version()
+        self.is_connected = True
+
+    def _close_client(self) -> None:
+        if self.client:
+            try:
+                self.client.disconnect()
+            except Exception:
+                pass
+            self.client = None
+
     def connect(self, force: bool = False) -> bool:
         if not force and not self.uses_obs_websocket():
             self.stop_monitor()
-            if self.client:
-                try:
-                    self.client.disconnect()
-                except Exception:
-                    pass
-                self.client = None
+            self._close_client()
             self.is_connected = False
             self._emit_status("直接取得モード", False)
             return False
@@ -179,25 +174,12 @@ class OBSWebSocketManager(QObject):
             return False
 
         try:
-            if self.client:
-                try:
-                    self.client.disconnect()
-                except Exception:
-                    pass
-                self.client = None
-
+            self._close_client()
             logger.info(
                 "OBS WebSocket 接続中: %s:%s",
                 self.config.websocket_host, self.config.websocket_port,
             )
-            self.client = ReqClient(
-                host=self.config.websocket_host,
-                port=self.config.websocket_port,
-                password=self.config.websocket_password,
-                timeout=5,
-            )
-            self.client.get_version()
-            self.is_connected = True
+            self._open_client()
             self._emit_status(
                 f"OBS 接続済み ({self.config.websocket_host}:{self.config.websocket_port})",
                 True,
@@ -208,12 +190,7 @@ class OBSWebSocketManager(QObject):
 
         except Exception as e:
             self.is_connected = False
-            if self.client:
-                try:
-                    self.client.disconnect()
-                except Exception:
-                    pass
-                self.client = None
+            self._close_client()
             self._emit_status(f"OBS 接続失敗: {e}", False)
             logger.error("OBS WebSocket 接続失敗: %s", e)
             if self.auto_reconnect:
@@ -223,12 +200,7 @@ class OBSWebSocketManager(QObject):
     def disconnect_obs(self) -> None:
         logger.info("OBS WebSocket 切断")
         self.stop_monitor()
-        if self.client:
-            try:
-                self.client.disconnect()
-            except Exception:
-                pass
-            self.client = None
+        self._close_client()
         self.is_connected = False
         self._scene_collection_applied = False
 
@@ -293,14 +265,7 @@ class OBSWebSocketManager(QObject):
                             f"OBS 再接続中... ({consecutive_failures + 1}回目)", False
                         )
                         try:
-                            self.client = ReqClient(
-                                host=self.config.websocket_host,
-                                port=self.config.websocket_port,
-                                password=self.config.websocket_password,
-                                timeout=5,
-                            )
-                            self.client.get_version()
-                            self.is_connected = True
+                            self._open_client()
                             self._emit_status(
                                 f"OBS 再接続成功 ({self.config.websocket_host}:{self.config.websocket_port})",
                                 True,

@@ -20,9 +20,6 @@ class PosIsPlay:
     AREA_RETRY  = (10, 155, 125, 315)
     AHASH_RETRY = "fffe7cf6fffe0000"
 
-    # 後方互換用エイリアス
-    AREA        = AREA_GAUGE
-    AHASH       = AHASH_GAUGE
     THRESHOLD   = 10
 
 
@@ -55,9 +52,6 @@ class PosResult:
     AREA_AGAIN_BTN  = (260, 875, 440, 945)
     AHASH_AGAIN_BTN = "7e7600087c417d7f"
 
-    # 後方互換用エイリアス
-    AREA            = AREA_PANEL
-    AHASH           = AHASH_PANEL
     THRESHOLD       = 10
 
 
@@ -72,8 +66,6 @@ class PosOption:
     # 状態2: 詳細設定画面 (シンプル/フル設定切替ボタン)
     # 1080pフルスクリーン時およびウィンドウモード(クライアント領域ストレッチ等)の両方に対応
     AREA_BTN        = (1650, 875, 1895, 925)
-    AHASH_BTN       = "007f7f7540c0e7ff"   # フル設定へ切替 (1080p)
-    AHASH_BTN_FULL  = "00fffff48080f7ff"   # シンプル設定へ切替 (1080p)
     AHASH_BTN_LIST  = [
         "007f7f7540c0e7ff",  # フル設定へ切替 (1080p)
         "00fffff48080f7ff",  # シンプル設定へ切替 (1080p)
@@ -140,32 +132,6 @@ class PosExit:
     THRESHOLD = 10
 
 
-class PosJudge:
-    """プレー画面の判定内訳バー座標 (1920x1080)。
-
-    画面下部に「BAD 0020 GOOD 0016 GREAT 0038 COOL 0125」が横並びで表示される。
-    各判定の色:
-      BAD   = シアン   (R<120, G>150, B>180)
-      GOOD  = 赤       (R>180, G<80,  B<80)
-      GREAT = 橙(黄)   (R>180, G=90..180, B<80)
-      COOL  = マゼンタ (R>180, G<80,  B>180)
-
-    実装: 前フレームとのカラーピクセル数の変化量で判定増分を推定する。
-    """
-    # バー全体エリア
-    FULL_AREA   = (600, 1025, 1350, 1070)
-
-    # 各判定のスキャンエリア (左→右: BAD / GOOD / GREAT / COOL)
-    BAD_AREA    = (600,  1028, 780,  1067)   # シアン
-    GOOD_AREA   = (780,  1028, 965,  1067)   # 赤
-    GREAT_AREA  = (965,  1028, 1160, 1067)   # 橙
-    COOL_AREA   = (1160, 1028, 1345, 1067)   # マゼンタ
-
-    # 色変化検出しきい値
-    # この値以上ピクセル数が変動したら「その判定が発生した」とみなす
-    CHANGE_THRESHOLD = 8
-
-
 class PosPlaySong:
     """プレー画面上部の曲名バー (1920x1080 座標)。
     黒地に白文字の曲名と、右端の丸い難易度アイコンが並ぶ。
@@ -178,25 +144,45 @@ class PosPlaySong:
     DIFF_ICON_HALF = 30            # 難易度アイコンの色を調べる範囲 (中心から ±px)
 
 
-class PosOptionItems:
-    """オプション設定画面の各項目スキャン領域 (1920x1080 座標)。
-    スクショ撮影後に各設定値領域の座標・ハッシュ等を微調整可能。
+class PosOptionList:
+    """オプション選択画面右下の設定一覧 (1920x1080 座標)。
+    こげ茶色のパネルに現在の設定値が 11 行並び、各行の下に色付きの下線が引かれている。
+    縦位置はキャプチャ方式によってずれるため、下線を動的に検出する (src/option_reader.py)。
     """
-    HISPEED_AREA     = (500, 220, 1420, 300)
-    POPKUN_AREA      = (500, 320, 1420, 400)
-    GAUGE_TYPE_AREA  = (500, 420, 1420, 500)
-    GUIDE_SE_AREA    = (500, 520, 1420, 600)
-    RANDOM_AREA      = (500, 620, 1420, 700)
-    JUDGE_PLUS_AREA  = (500, 720, 1420, 800)
-    HIDDEN_AREA      = (500, 820, 1420, 900)
-    SUDDEN_AREA      = (500, 920, 1420, 1000)
-    OJAMA1_AREA      = (500, 1020, 1420, 1100)
-    OJAMA2_AREA      = (500, 1120, 1420, 1200)
-    AUTO_AREA        = (500, 1220, 1420, 1300)
+    SEARCH_AREA   = (1120, 430, 1760, 1010)   # 下線の探索範囲
+    LINE_LENGTH   = (300, 420)                # 下線とみなす長さの範囲
+    PITCH         = (30.0, 44.0)              # 行間隔とみなす範囲
+    SIMPLE_PITCH  = (75.0, 100.0)             # シンプル設定 (4 行) の行間隔とみなす範囲
+    SIMPLE_TEXT_RATIO = 0.42                  # シンプル設定の行間隔に対するフル設定の行間隔の比
+    TEXT_OVERHANG = 10                        # 文字が下線の右端からはみ出す幅 (パネル右端は含めない)
 
-    # 互換用エイリアス
-    GAUGE_AREA       = GAUGE_TYPE_AREA
-    ARRANGEMENT_AREA = RANDOM_AREA
+
+class PosOptionIcons:
+    """OptionSelect 画面中央下のオプションアイコン (1920x1080 座標)。
+    黒い角丸の枠に、フル設定では 上段 5 個 / 下段 6 個、シンプル設定では 4 個が 1 段で並ぶ。
+    縦位置・縦倍率はキャプチャ方式によって変わるため、枠を動的に検出する (src/option_reader.py)。
+    """
+    BAND_X           = (700, 1220)     # 黒枠の行判定に使う横範囲
+    SEARCH_Y         = (560, 1010)     # 黒枠の探索範囲
+    BOX_HEIGHT       = 212             # 基準の枠の高さ (タイトルバー込みのキャプチャ)
+    BOX_HEIGHT_RANGE = (195, 240)      # 枠とみなす高さの範囲
+
+    BOX_WIDTH_RANGE  = (520, 580)      # 枠とみなす幅の範囲
+
+    # アイコンの中心 x (枠の幅に対する比率)、中心 y (枠の高さに対する比率)
+    ROW_X    = ((0.162, 0.333, 0.496, 0.662, 0.831),
+                (0.082, 0.255, 0.415, 0.584, 0.751, 0.918))
+    ROW_Y    = (0.269, 0.736)
+    SIMPLE_X = (0.153, 0.387, 0.624, 0.853)
+    SIMPLE_ROW_Y = 0.5
+    ICON_HALF = 46                     # アイコンの切り出し範囲 (中心から ±px)
+
+    # HIDDEN / SUDDEN のアイコン内の値。アイコン中心からの相対位置
+    VALUE_Y          = (-2, 34)
+    VALUE_GLYPH_X    = (27, 9, -9, -27)   # 右の文字から順
+    VALUE_GLYPH_HALF = 9
+
+    BPM_X = (0.391, 0.982)              # bpm 行の「× 2.9 = 435」の横範囲 (枠の幅に対する比率)
 
 
 class PosLoading:

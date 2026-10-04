@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QDialog, QDialogButtonBox, QFormLayout, QGroupBox,
-    QHBoxLayout, QLabel, QLineEdit, QRadioButton, QButtonGroup,
+    QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QGroupBox,
+    QHBoxLayout, QLabel, QLineEdit, QPushButton, QRadioButton, QButtonGroup,
     QCheckBox, QSpinBox, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
 )
 
@@ -71,12 +71,41 @@ class ConfigDialog(QDialog):
         other_form = QFormLayout(other_group)
         self._chk_keep_on_top = QCheckBox(self.ui.feature.keep_on_top)
         other_form.addRow(self._chk_keep_on_top)
+        self._chk_single_cpu = QCheckBox(self.ui.feature.lively_single_cpu)
+        self._chk_single_cpu.setToolTip(self.ui.feature.lively_single_cpu_tip)
+        other_form.addRow(self._chk_single_cpu)
         self._spin_data_port = QSpinBox()
         self._spin_data_port.setRange(1024, 65535)
         other_form.addRow(QLabel(self.ui.feature.websocket_port), self._spin_data_port)
         layout.addWidget(other_group)
+
+        # リザルトのスクリーンショット
+        shot_group = QGroupBox(self.ui.feature.screenshot_group)
+        shot_form = QFormLayout(shot_group)
+        self._cmb_shot_mode = QComboBox()
+        self._cmb_shot_mode.addItem(self.ui.feature.screenshot_mode_off, "off")
+        self._cmb_shot_mode.addItem(self.ui.feature.screenshot_mode_all, "all")
+        self._cmb_shot_mode.addItem(self.ui.feature.screenshot_mode_best, "best")
+        self._cmb_shot_mode.setToolTip(self.ui.feature.screenshot_mode_tip)
+        shot_form.addRow(QLabel(self.ui.feature.screenshot_mode), self._cmb_shot_mode)
+        self._edit_shot_dir = QLineEdit()
+        btn_shot_dir = QPushButton(self.ui.feature.screenshot_dir_browse)
+        btn_shot_dir.clicked.connect(self._browse_shot_dir)
+        dir_row = QHBoxLayout()
+        dir_row.addWidget(self._edit_shot_dir)
+        dir_row.addWidget(btn_shot_dir)
+        shot_form.addRow(QLabel(self.ui.feature.screenshot_dir), dir_row)
+        layout.addWidget(shot_group)
+
         layout.addStretch()
         return tab
+
+    def _browse_shot_dir(self):
+        path = QFileDialog.getExistingDirectory(
+            self, self.ui.feature.screenshot_dir_dialog, self._edit_shot_dir.text().strip()
+        )
+        if path:
+            self._edit_shot_dir.setText(path)
 
     def _build_obs_tab(self) -> QWidget:
         tab = QWidget()
@@ -120,7 +149,12 @@ class ConfigDialog(QDialog):
 
         self._chk_all_monitors.setChecked(self.config.direct_capture_all_monitors)
         self._chk_keep_on_top.setChecked(self.config.keep_on_top)
+        self._chk_single_cpu.setChecked(self.config.lively_single_cpu)
         self._spin_data_port.setValue(self.config.websocket_data_port)
+        self._cmb_shot_mode.setCurrentIndex(
+            max(0, self._cmb_shot_mode.findData(self.config.result_screenshot_mode))
+        )
+        self._edit_shot_dir.setText(self.config.result_screenshot_dir)
 
         self._edit_obs_host.setText(self.config.websocket_host)
         self._spin_obs_port.setValue(self.config.websocket_port)
@@ -135,7 +169,12 @@ class ConfigDialog(QDialog):
         ][bid]
         self.config.direct_capture_all_monitors = self._chk_all_monitors.isChecked()
         self.config.keep_on_top                 = self._chk_keep_on_top.isChecked()
+        self.config.lively_single_cpu           = self._chk_single_cpu.isChecked()
         self.config.websocket_data_port         = self._spin_data_port.value()
+        self.config.result_screenshot_mode      = self._cmb_shot_mode.currentData()
+        self.config.result_screenshot_dir       = (
+            self._edit_shot_dir.text().strip() or "result_screenshots"
+        )
         self.config.websocket_host              = self._edit_obs_host.text().strip()
         self.config.websocket_port              = self._spin_obs_port.value()
         self.config.websocket_password          = self._edit_obs_pass.text()

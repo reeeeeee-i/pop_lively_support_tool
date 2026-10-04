@@ -1,4 +1,4 @@
-"""OBS 制御設定ダイアログ (pop'n music Lively 打鍵カウンタ版)
+"""OBS 制御設定ダイアログ (pop_lively_support_tool版)
 既存の inf_daken_counter_obsw の obs_dialog.py をベースに移植・簡略化。
 """
 from __future__ import annotations
