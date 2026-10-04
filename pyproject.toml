@@ -1,6 +1,6 @@
 [project]
 name = "pop-lively-support-tool"
-version = "261004"
+version = "261004.1"
 description = "pop_lively_support_tool"
 license = "Apache-2.0"
 license-files = ["LICENSE"]

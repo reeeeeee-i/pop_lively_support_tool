@@ -11,13 +11,16 @@ import tomllib
 from cx_Freeze import Executable, setup
 from cx_Freeze.command.build_exe import build_exe as _build_exe
 
-# ver は pyproject.toml の version (年月日 YYMMDD、例: 261004) を正とする。
-# exe のバージョンリソースは各要素 16bit までなので "26.10.4" の形に分割して渡す。
+# ver は pyproject.toml の version (年月日 YYMMDD、例: 261004。同日の再リリースは 261004.1) を正とする。
+# exe のバージョンリソースは各要素 16bit までなので "26.10.4" / "26.10.4.1" の形に分割して渡す。
 with open(Path(__file__).parent / "pyproject.toml", "rb") as f:
     APP_VERSION = tomllib.load(f)["project"]["version"]
-if not (len(APP_VERSION) == 6 and APP_VERSION.isdigit()):
-    raise SystemExit(f"pyproject.toml の version は YYMMDD 形式にしてください: {APP_VERSION}")
-EXE_VERSION = ".".join(str(int(APP_VERSION[i:i + 2])) for i in (0, 2, 4))
+_date, _, _rev = APP_VERSION.partition(".")
+if not (len(_date) == 6 and _date.isdigit() and (_rev.isdigit() if "." in APP_VERSION else True)):
+    raise SystemExit(f"pyproject.toml の version は YYMMDD または YYMMDD.N 形式にしてください: {APP_VERSION}")
+EXE_VERSION = ".".join(
+    [str(int(_date[i:i + 2])) for i in (0, 2, 4)] + ([str(int(_rev))] if _rev else [])
+)
 
 # PySide6のパスを取得
 include_files = []
