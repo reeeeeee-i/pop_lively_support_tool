@@ -26,7 +26,6 @@ _KEYS = (
     "language",
     "keep_on_top",
     "lively_single_cpu",
-    "websocket_data_port",
     "score_csv_path",
     "score_db_path",
     "score_history_columns",
@@ -76,9 +75,6 @@ class Config:
         self.main_window_height: int = 340
         self.lively_single_cpu: bool = False
         """Lively の CPU 割り当てを 1 コアに絞る（ロード時間短縮）"""
-
-        # データ配信ポート（IIDX ツールと競合しないよう別ポート）
-        self.websocket_data_port: int = 8768
 
         # スコア記録 CSV パス
         self.score_csv_path: str = "popn_score.csv"
