@@ -74,9 +74,6 @@ class ConfigDialog(QDialog):
         self._chk_single_cpu = QCheckBox(self.ui.feature.lively_single_cpu)
         self._chk_single_cpu.setToolTip(self.ui.feature.lively_single_cpu_tip)
         other_form.addRow(self._chk_single_cpu)
-        self._spin_data_port = QSpinBox()
-        self._spin_data_port.setRange(1024, 65535)
-        other_form.addRow(QLabel(self.ui.feature.websocket_port), self._spin_data_port)
         layout.addWidget(other_group)
 
         # リザルトのスクリーンショット
@@ -150,7 +147,6 @@ class ConfigDialog(QDialog):
         self._chk_all_monitors.setChecked(self.config.direct_capture_all_monitors)
         self._chk_keep_on_top.setChecked(self.config.keep_on_top)
         self._chk_single_cpu.setChecked(self.config.lively_single_cpu)
-        self._spin_data_port.setValue(self.config.websocket_data_port)
         self._cmb_shot_mode.setCurrentIndex(
             max(0, self._cmb_shot_mode.findData(self.config.result_screenshot_mode))
         )
@@ -170,7 +166,6 @@ class ConfigDialog(QDialog):
         self.config.direct_capture_all_monitors = self._chk_all_monitors.isChecked()
         self.config.keep_on_top                 = self._chk_keep_on_top.isChecked()
         self.config.lively_single_cpu           = self._chk_single_cpu.isChecked()
-        self.config.websocket_data_port         = self._spin_data_port.value()
         self.config.result_screenshot_mode      = self._cmb_shot_mode.currentData()
         self.config.result_screenshot_dir       = (
             self._edit_shot_dir.text().strip() or "result_screenshots"

@@ -46,7 +46,6 @@ class UIText:
             "Lively の起動を検出したら、使用率が最小の CPU だけを割り当て、優先度を「高」にします。\n"
             "無効に戻すと、起動中の Lively の割り当ても元に戻します。"
         )
-        websocket_port                  = "データ表示用ポート:"
         screenshot_group                = "リザルトのスクリーンショット"
         screenshot_mode                 = "撮影:"
         screenshot_mode_off             = "無効"
@@ -71,8 +70,7 @@ class UIText:
         triggers    = "OBS 自動制御トリガー"
         help_text   = (
             "トリガーに応じて OBS を自動操作します。\n"
-            "config.json の obs_control_settings を直接編集して設定してください。\n\n"
-            "例: [{\"trigger\": \"play_start\", \"action\": \"start_recording\"}]"
+            "メニューの「ファイル → OBS 制御設定」から設定してください。"
         )
 
     class main_display:
