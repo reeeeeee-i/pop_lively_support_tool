@@ -48,6 +48,10 @@ _JUDGE_ROW_CENTERS = (0.185, 0.406, 0.622, 0.844)
 _JUDGE_ROW_HALF = 0.105
 # SCORE ボックスの高さ (判定ボックス高さに対する比率)
 _SCORE_BOX_RATIO = 0.37
+# 「Retire」プレートの範囲。y は SCORE ボックス上端からの相対位置
+_RETIRE_X = (760, 1160)
+_RETIRE_Y = (-62, -12)
+_RETIRE_MIN_FRAC = 0.3   # プレートの地色 (薄紫) がこの割合以上を占めればリタイアとみなす
 
 
 @dataclass
@@ -95,6 +99,7 @@ class ResultValues:
     best: int | None = None
     diff: int | None = None
     score_verified: bool = False   # SCORE が「前回ベスト + 差分」と一致したか
+    retire: bool = False           # リタイアしたプレーか (「Retire」プレートの有無)
     notes: list[str] = field(default_factory=list)
 
     @property
@@ -213,6 +218,21 @@ def locate_panel(arr: np.ndarray) -> PanelBoxes | None:
         return panel
 
     return None
+
+
+def is_retire(arr: np.ndarray, panel: PanelBoxes) -> bool:
+    """リタイアしたプレーのリザルトかどうか。
+
+    リタイア時は SCORE ボックスのすぐ上に薄紫の「Retire」プレートが表示される
+    (通常は何も無いか、「NEW RECORD!」の帯)。
+    """
+    y0, y1 = (max(0, panel.score[0] + dy) for dy in _RETIRE_Y)
+    region = arr[y0:y1, _RETIRE_X[0]:_RETIRE_X[1]].astype(np.int16)
+    if region.size == 0:
+        return False
+    r, g, b = region[..., 0], region[..., 1], region[..., 2]
+    plate = (r > 200) & (g > 180) & (g < 235) & (b > 235) & (r - g > 8)
+    return bool(plate.mean() >= _RETIRE_MIN_FRAC)
 
 
 def _locate_judge_rows(arr: np.ndarray, panel: PanelBoxes) -> list[tuple[int, int]]:
@@ -408,7 +428,7 @@ def read_result_values(image: Image.Image) -> ResultValues | None:
     if panel is None:
         return None
 
-    v = ResultValues()
+    v = ResultValues(retire=is_retire(arr, panel))
     dists = {}
     for name in ("cool", "great", "good", "bad", "combo", "best", "diff"):
         value, dists[name] = _read_row(arr, panel, name, v.notes)

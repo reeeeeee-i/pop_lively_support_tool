@@ -17,6 +17,7 @@ from src.define import (
     PosOption,
     PosTitle,
     PosTicket,
+    PosStatus,
     PosCharacterSelect,
     PosExit,
     PosLoading,
@@ -84,7 +85,7 @@ class ScreenReader:
         return _matches(
             image, PosIsPlay.THRESHOLD,
             # 左上の「Esc長押しでリタイア / F1長押しでリトライ」枠（常時固定表示）
-            (PosIsPlay.AREA_RETRY, PosIsPlay.AHASH_RETRY),
+            (PosIsPlay.AREA_RETRY, PosIsPlay.AHASH_RETRY_LIST),
             # GROOVE GAUGE ラベル
             (PosIsPlay.AREA_GAUGE, PosIsPlay.AHASH_GAUGE),
         )
@@ -109,8 +110,6 @@ class ScreenReader:
             (PosOption.AREA_BTN, PosOption.AHASH_BTN_LIST),
             # 詳細設定画面の中央上部「CATEGORY」プレート
             (PosOption.AREA_CATEGORY, PosOption.AHASH_CATEGORY_LIST),
-            # 詳細設定画面の右端「CUSTOMIZE YOUR GAMEPLAY」縦テキスト
-            (PosOption.AREA_CUSTOMIZE, PosOption.AHASH_CUSTOMIZE_LIST),
         ):
             return True
         try:
@@ -124,13 +123,33 @@ class ScreenReader:
         return _matches(image, PosTitle.THRESHOLD, (PosTitle.AREA, PosTitle.AHASH))
 
     def is_ticket(self, image: Image.Image) -> bool:
-        """チケット画面かどうか（右上の Ticket ロゴ）"""
-        return _matches(image, PosTicket.THRESHOLD, (PosTicket.AREA_LOGO, PosTicket.AHASH_LOGO))
+        """チケット画面かどうか"""
+        return _matches(
+            image, PosTicket.THRESHOLD,
+            # 右上の「Ticket」ロゴ
+            (PosTicket.AREA_LOGO, PosTicket.AHASH_LOGO),
+            # 右下の所持チケット表示（カテゴリ選択中はロゴが隠れるため）
+            (PosTicket.AREA_OWNED, PosTicket.AHASH_OWNED),
+        )
+
+    def is_status(self, image: Image.Image) -> bool:
+        """ステータス画面かどうか"""
+        return _matches(
+            image, PosStatus.THRESHOLD,
+            # 右上の「Status」ロゴ
+            (PosStatus.AREA_LOGO, PosStatus.AHASH_LOGO),
+            # プレーヤーカード右下の「ポプともLivelyID：」ラベル
+            (PosStatus.AREA_ID, PosStatus.AHASH_ID),
+        )
 
     def is_character_select(self, image: Image.Image) -> bool:
         """キャラクターセレクト画面かどうか"""
         return _matches(
-            image, PosCharacterSelect.THRESHOLD, (PosCharacterSelect.AREA, PosCharacterSelect.AHASH)
+            image, PosCharacterSelect.THRESHOLD,
+            # 右下の「1 お気に入り」操作ボタン
+            (PosCharacterSelect.AREA, PosCharacterSelect.AHASH),
+            # 左下の「player」ラベル（お気に入りボタンが「解除」に変わっている場合向け）
+            (PosCharacterSelect.AREA_PLAYER, PosCharacterSelect.AHASH_PLAYER),
         )
 
     def is_exit(self, image: Image.Image) -> bool:
@@ -178,6 +197,8 @@ class ScreenReader:
             (PosMusicSelect.AREA_LOGO, PosMusicSelect.AHASH_LOGO),
             # カテゴリ選択中等も含めて常に表示される左下の Backspace ボタン
             (PosMusicSelect.AREA_BACKSPACE, PosMusicSelect.AHASH_BACKSPACE),
+            # ダイアログ (クエスト・判定調整・キーコンフィグ等) を開いていても残る左下ボタンの左側
+            (PosMusicSelect.AREA_GUIDE, PosMusicSelect.AHASH_GUIDE),
         )
 
     def detect_mode(self, image: Image.Image) -> DetectMode:
@@ -191,6 +212,7 @@ class ScreenReader:
         checks = (
             (DetectMode.loading,          self.is_loading),
             (DetectMode.title,            self.is_title),
+            (DetectMode.status,           self.is_status),
             (DetectMode.ticket,           self.is_ticket),
             (DetectMode.character_select, self.is_character_select),
             (DetectMode.option,           self.is_option),

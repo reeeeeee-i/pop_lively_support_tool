@@ -29,9 +29,13 @@ _KEYS = (
     "score_csv_path",
     "score_db_path",
     "score_history_columns",
-    "result_screenshot_mode",
+    "score_skip_retire",
+    "result_screenshot_conditions",
     "result_screenshot_dir",
 )
+# 旧設定 result_screenshot_mode → result_screenshot_conditions
+_LEGACY_SCREENSHOT_MODES = {"off": [], "all": ["all"], "best": ["best"]}
+SCREENSHOT_CONDITIONS = ("all", "best", "fullcombo", "perfect")
 # 設定ファイルの "window" 以下のキー → Config の属性名
 _WINDOW_KEYS = {
     "x": "main_window_x",
@@ -82,10 +86,14 @@ class Config:
         self.score_db_path: str = "popn.db"
         # スコア履歴ビューの列設定 (並び順 / 非表示列 / 列幅)
         self.score_history_columns: dict = {}
+        # スコア保存時の条件
+        self.score_skip_retire: bool = False
+        """リタイアしたプレーのスコアを保存しない"""
 
         # リザルト画面のスクリーンショット
-        self.result_screenshot_mode: str = "off"
-        """'off'=無効 / 'all'=毎回保存 / 'best'=自己ベスト更新時のみ保存"""
+        self.result_screenshot_conditions: list = []
+        """保存条件 (いずれかを満たせば保存。空=無効)。
+        'all'=毎回 / 'best'=自己ベスト更新時 / 'fullcombo'=FULL COMBO 時 / 'perfect'=PERFECT 時"""
         self.result_screenshot_dir: str = "result_screenshots"
         """スクリーンショットの保存先フォルダ"""
 
@@ -104,6 +112,12 @@ class Config:
 
             for key in _KEYS:
                 setattr(self, key, d.get(key, getattr(self, key)))
+            if "result_screenshot_conditions" not in d:
+                self.result_screenshot_conditions = list(
+                    _LEGACY_SCREENSHOT_MODES.get(d.get("result_screenshot_mode"), [])
+                )
+            elif not isinstance(self.result_screenshot_conditions, list):
+                self.result_screenshot_conditions = []
             window = d.get("window", {})
             for key, attr in _WINDOW_KEYS.items():
                 setattr(self, attr, window.get(key, getattr(self, attr)))

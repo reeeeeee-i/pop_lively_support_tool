@@ -20,6 +20,9 @@ beatmania IIDX INFINITAS 向けツール [inf_daken_counter_obsw](https://github
 - OS: Windows 10 / 11
 - pop'n music Lively
 
+> **注意**: `popnlively.exe` のプロパティ（互換性タブ）で「全画面表示の最適化を無効にする」にチェックを入れないでください。
+> チェックを入れると、ゲーム画面の取り込み（直接取得・OBS のどちらでも）が重くなり、動作が遅くなることがあります。
+
 ## 使い方
 
 ### 起動

@@ -59,6 +59,7 @@ _MODE_COLORS = {
     DetectMode.select:           "#40c4ff",  # 選曲中（水色）
     DetectMode.option:           "#ff80ab",  # オプション（ピンク）
     DetectMode.title:            "#b388ff",  # タイトル（紫）
+    DetectMode.status:           "#b388ff",  # ステータス（紫）
     DetectMode.ticket:           "#b388ff",  # チケット（紫）
     DetectMode.character_select: "#b388ff",  # キャラセレクト（紫）
     DetectMode.exit:             "#ff5252",  # 終了画面（赤）
@@ -70,6 +71,7 @@ _MODE_COLORS = {
 # 1 回の画面遷移で出る開始・終了トリガーの順序は、この並び順で決まる
 _TRIGGER_MODES = (
     DetectMode.title,
+    DetectMode.status,
     DetectMode.ticket,
     DetectMode.character_select,
     DetectMode.select,
@@ -135,6 +137,7 @@ class MainWindow(QMainWindow):
         self._result_stable = 0
         self._result_values = None   # 直近に全項目を読めた値
         self._result_image = None    # 直近のリザルト画面フレーム
+        self._result_retire = False  # リザルト画面で「Retire」の表示を検出したか
 
         self._setup_ui()
         self._setup_obs()
@@ -236,6 +239,7 @@ class MainWindow(QMainWindow):
             DetectMode.select:           status.select,
             DetectMode.option:           status.option,
             DetectMode.title:            status.title,
+            DetectMode.status:           status.status,
             DetectMode.ticket:           status.ticket,
             DetectMode.character_select: status.character_select,
             DetectMode.exit:             status.exit,
@@ -386,6 +390,7 @@ class MainWindow(QMainWindow):
             self._result_stable = 0
             self._result_values = None
             self._result_image = None
+            self._result_retire = False
 
     def _leave_mode(self, mode: DetectMode):
         if mode == DetectMode.result:
@@ -451,6 +456,9 @@ class MainWindow(QMainWindow):
         """リザルト画面の数値を読み、数フレーム連続で同じ値になったら記録する。"""
         self._result_frames += 1
         values = self.screen_reader.read_result_values(image)
+        # 「Retire」の表示が数値より遅れて出ても拾えるよう、一度でも検出したら覚えておく
+        if values is not None and values.retire:
+            self._result_retire = True
 
         if values is not None and values.is_complete:
             same = self._result_values is not None and values.key() == self._result_values.key()
@@ -484,7 +492,17 @@ class MainWindow(QMainWindow):
                 difficulty=self.score_manager.current_difficulty,
                 values=values,
             )
-            saved = self.score_manager.add_record(record)
+            if self.config.score_skip_retire and self._result_retire:
+                # 記録はしないが、打鍵数は本日の打鍵数に反映する
+                logger.info("リタイアのためスコアを保存しません: %s - SCORE:%d", record.title, record.score)
+                self._check_date_rollover()
+                self._today_notes += record.cool + record.great + record.good
+                self._reset_song_judge()
+                self._update_display()
+                self._statusbar.showMessage(self.ui.status.retire_skipped, 6000)
+                saved = False
+            else:
+                saved = self.score_manager.add_record(record)
             if saved:
                 # プレー中の暫定値を捨て、リザルト画面の値を本日の打鍵数に反映する
                 self._check_date_rollover()
@@ -505,10 +523,15 @@ class MainWindow(QMainWindow):
 
     def _save_result_screenshot(self, image, record):
         """設定に応じて、記録したリザルト画面のスクリーンショットを保存する。"""
-        mode = self.config.result_screenshot_mode
-        if mode not in ("all", "best"):
-            return
-        if mode == "best" and not self.score_manager.is_personal_best(record):
+        conds = self.config.result_screenshot_conditions
+        # リタイアしたプレーは BAD が 0 でも FULL COMBO / PERFECT として扱わない
+        full_combo = not self._result_retire and record.total_notes > 0 and record.bad == 0
+        if not (
+            "all" in conds
+            or ("fullcombo" in conds and full_combo)
+            or ("perfect" in conds and full_combo and record.good == 0)
+            or ("best" in conds and self.score_manager.is_personal_best(record))
+        ):
             return
         try:
             folder = self.config.result_screenshot_dir

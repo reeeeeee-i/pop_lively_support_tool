@@ -25,10 +25,12 @@ class UIText:
         select           = "選曲中"
         option           = "オプション"
         title            = "タイトル"
+        status           = "ステータス"
         ticket           = "チケット"
         character_select = "キャラセレクト"
         exit             = "終了画面"
         loading          = "ロード中"
+        retire_skipped   = "リタイアのためスコアを保存しませんでした"
         obs_connected    = "OBS 接続中"
         obs_disconnected = "OBS 未接続"
 
@@ -46,15 +48,24 @@ class UIText:
             "Lively の起動を検出したら、使用率が最小の CPU だけを割り当て、優先度を「高」にします。\n"
             "無効に戻すと、起動中の Lively の割り当ても元に戻します。"
         )
+        score_save_group                = "スコア保存時の条件"
+        score_skip_retire               = "retire 時は保存しない"
+        score_skip_retire_tip           = (
+            "リタイアしたプレー（リザルト画面に「Retire」と表示されるプレー）のスコアを記録しません。\n"
+            "打鍵数は本日の打鍵数に加算します。"
+        )
         screenshot_group                = "リザルトのスクリーンショット"
-        screenshot_mode                 = "撮影:"
-        screenshot_mode_off             = "無効"
-        screenshot_mode_all             = "保存"
-        screenshot_mode_best            = "自己ベストのみ保存"
-        screenshot_mode_tip             = (
+        screenshot_cond                 = "保存条件:"
+        screenshot_cond_all             = "毎回"
+        screenshot_cond_best            = "自己ベスト"
+        screenshot_cond_fullcombo       = "FULL COMBO"
+        screenshot_cond_perfect         = "PERFECT"
+        screenshot_cond_tip             = (
             "スコアを記録したときのリザルト画面を PNG で保存します。\n"
-            "「自己ベストのみ保存」は、同じ曲・難易度のスコアを更新したとき（初プレーを含む）だけ保存します。\n"
-            "曲を特定できなかったプレーは比較できないため保存します。"
+            "チェックした条件のいずれかを満たしたときに保存します（すべて外すと保存しません）。\n"
+            "「自己ベスト」は、同じ曲・難易度のスコアを更新したとき（初プレーを含む）に保存します。\n"
+            "曲を特定できなかったプレーは比較できないため保存します。\n"
+            "「FULL COMBO」は BAD が 0、「PERFECT」は GOOD と BAD が 0 のときに保存します。"
         )
         screenshot_dir                  = "保存先フォルダ:"
         screenshot_dir_browse           = "参照..."

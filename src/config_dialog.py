@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QGroupBox,
+    QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QGroupBox,
     QHBoxLayout, QLabel, QLineEdit, QPushButton, QRadioButton, QButtonGroup,
     QCheckBox, QSpinBox, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
 )
@@ -76,15 +76,31 @@ class ConfigDialog(QDialog):
         other_form.addRow(self._chk_single_cpu)
         layout.addWidget(other_group)
 
+        # スコア保存時の条件
+        save_group = QGroupBox(self.ui.feature.score_save_group)
+        save_vbox = QVBoxLayout(save_group)
+        self._chk_skip_retire = QCheckBox(self.ui.feature.score_skip_retire)
+        self._chk_skip_retire.setToolTip(self.ui.feature.score_skip_retire_tip)
+        save_vbox.addWidget(self._chk_skip_retire)
+        layout.addWidget(save_group)
+
         # リザルトのスクリーンショット
         shot_group = QGroupBox(self.ui.feature.screenshot_group)
         shot_form = QFormLayout(shot_group)
-        self._cmb_shot_mode = QComboBox()
-        self._cmb_shot_mode.addItem(self.ui.feature.screenshot_mode_off, "off")
-        self._cmb_shot_mode.addItem(self.ui.feature.screenshot_mode_all, "all")
-        self._cmb_shot_mode.addItem(self.ui.feature.screenshot_mode_best, "best")
-        self._cmb_shot_mode.setToolTip(self.ui.feature.screenshot_mode_tip)
-        shot_form.addRow(QLabel(self.ui.feature.screenshot_mode), self._cmb_shot_mode)
+        self._chk_shot_conds = {
+            "all":       QCheckBox(self.ui.feature.screenshot_cond_all),
+            "best":      QCheckBox(self.ui.feature.screenshot_cond_best),
+            "fullcombo": QCheckBox(self.ui.feature.screenshot_cond_fullcombo),
+            "perfect":   QCheckBox(self.ui.feature.screenshot_cond_perfect),
+        }
+        cond_row = QHBoxLayout()
+        for chk in self._chk_shot_conds.values():
+            chk.setToolTip(self.ui.feature.screenshot_cond_tip)
+            cond_row.addWidget(chk)
+        cond_row.addStretch()
+        self._chk_shot_conds["all"].toggled.connect(self._on_shot_all_toggled)
+        self._chk_shot_conds["fullcombo"].toggled.connect(self._on_shot_fullcombo_toggled)
+        shot_form.addRow(QLabel(self.ui.feature.screenshot_cond), cond_row)
         self._edit_shot_dir = QLineEdit()
         btn_shot_dir = QPushButton(self.ui.feature.screenshot_dir_browse)
         btn_shot_dir.clicked.connect(self._browse_shot_dir)
@@ -96,6 +112,24 @@ class ConfigDialog(QDialog):
 
         layout.addStretch()
         return tab
+
+    def _on_shot_all_toggled(self, checked: bool):
+        """「毎回」を選んだら、他の条件は意味を持たないのでグレーアウトする。"""
+        self._update_shot_conds_enabled()
+
+    def _on_shot_fullcombo_toggled(self, checked: bool):
+        """FULL COMBO を選んだら、PERFECT も自動的に選んでグレーアウトする。"""
+        if checked:
+            self._chk_shot_conds["perfect"].setChecked(True)
+        self._update_shot_conds_enabled()
+
+    def _update_shot_conds_enabled(self):
+        conds = self._chk_shot_conds
+        every = conds["all"].isChecked()
+        conds["best"].setEnabled(not every)
+        conds["fullcombo"].setEnabled(not every)
+        # PERFECT は FULL COMBO に含まれるため、FULL COMBO 選択中は変更できない
+        conds["perfect"].setEnabled(not every and not conds["fullcombo"].isChecked())
 
     def _browse_shot_dir(self):
         path = QFileDialog.getExistingDirectory(
@@ -147,9 +181,9 @@ class ConfigDialog(QDialog):
         self._chk_all_monitors.setChecked(self.config.direct_capture_all_monitors)
         self._chk_keep_on_top.setChecked(self.config.keep_on_top)
         self._chk_single_cpu.setChecked(self.config.lively_single_cpu)
-        self._cmb_shot_mode.setCurrentIndex(
-            max(0, self._cmb_shot_mode.findData(self.config.result_screenshot_mode))
-        )
+        self._chk_skip_retire.setChecked(self.config.score_skip_retire)
+        for key, chk in self._chk_shot_conds.items():
+            chk.setChecked(key in self.config.result_screenshot_conditions)
         self._edit_shot_dir.setText(self.config.result_screenshot_dir)
 
         self._edit_obs_host.setText(self.config.websocket_host)
@@ -166,7 +200,10 @@ class ConfigDialog(QDialog):
         self.config.direct_capture_all_monitors = self._chk_all_monitors.isChecked()
         self.config.keep_on_top                 = self._chk_keep_on_top.isChecked()
         self.config.lively_single_cpu           = self._chk_single_cpu.isChecked()
-        self.config.result_screenshot_mode      = self._cmb_shot_mode.currentData()
+        self.config.score_skip_retire           = self._chk_skip_retire.isChecked()
+        self.config.result_screenshot_conditions = [
+            key for key, chk in self._chk_shot_conds.items() if chk.isChecked()
+        ]
         self.config.result_screenshot_dir       = (
             self._edit_shot_dir.text().strip() or "result_screenshots"
         )

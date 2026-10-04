@@ -36,6 +36,8 @@ logger = get_logger(__name__)
 _TIMINGS = [
     ("title_start",             "タイトル画面表示"),
     ("title_end",               "タイトル画面終了"),
+    ("status_start",            "ステータス画面表示"),
+    ("status_end",              "ステータス画面終了"),
     ("ticket_start",            "チケット画面表示"),
     ("ticket_end",              "チケット画面終了"),
     ("character_select_start",  "キャラセレクト表示"),

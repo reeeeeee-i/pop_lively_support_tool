@@ -166,3 +166,4 @@ class DetectMode(Enum):
     character_select = 7   # キャラクターセレクト画面
     exit             = 8   # 終了画面
     loading          = 9   # ロード画面（画面遷移中）
+    status           = 10  # ステータス画面
