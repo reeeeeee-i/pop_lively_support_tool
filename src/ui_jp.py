@@ -11,6 +11,7 @@ class UIText:
         file          = "ファイル(&F)"
         settings      = "設定(&C)..."
         obs_settings  = "OBS 制御設定(&O)..."
+        open_screenshot_dir = "スクリーンショットのフォルダを開く(&P)"
         reset_count   = "本日の打鍵数をリセット(&R)"
         exit          = "終了(&X)"
         score         = "スコア(&S)"
@@ -110,4 +111,5 @@ class UIText:
         last_song      = "最後にプレイした曲"
         reset_notes    = "本日の打鍵数をリセット"
         screenshot_tip = "現在の画面のスクリーンショットを保存"
+        open_screenshot_dir = "スクリーンショットのフォルダを開く"
         none_song      = "なし"
