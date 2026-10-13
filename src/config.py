@@ -15,7 +15,8 @@ _CONFIG_FILE = "config.json"
 
 # 設定ファイルに保存する項目 (= Config の属性名)。保存順
 _KEYS = (
-    "capture_method",
+    "capture_priority",
+    "capture_fallback_seconds",
     "direct_capture_exe",
     "direct_capture_title",
     "direct_capture_all_monitors",
@@ -40,7 +41,9 @@ _KEYS = (
 )
 # 旧設定 result_screenshot_mode → result_screenshot_conditions
 _LEGACY_SCREENSHOT_MODES = {"off": [], "all": ["all"], "best": ["best"]}
-SCREENSHOT_CONDITIONS = ("all", "best", "fullcombo", "perfect")
+CAPTURE_METHODS = ("direct_window", "direct_window_legacy", "obs_websocket")
+FALLBACK_SECONDS_RANGE = (1, 300)
+SCREENSHOT_CONDITIONS =("all", "best", "fullcombo", "perfect")
 SCREENSHOT_FORMATS = ("png", "jpeg")
 JPEG_QUALITY_RANGE = (10, 100)
 # 設定ファイルの "window" 以下のキー → Config の属性名
@@ -57,8 +60,11 @@ class Config:
         self.config_file = config_file
 
         # キャプチャ設定
-        self.capture_method: str = "direct_window"
-        """'direct_window'=DXCAM直接取得 / 'direct_window_legacy'=旧直接取得 / 'obs_websocket'=OBS WebSocket経由"""
+        self.capture_priority: list = ["direct_window"]
+        """有効な取り込み方式を優先順に並べたリスト。
+        'direct_window'=DXCAM直接取得 / 'direct_window_legacy'=旧直接取得 / 'obs_websocket'=OBS WebSocket経由"""
+        self.capture_fallback_seconds: int = 10
+        """フレームを取得できないまま、この秒数が経つと次の方式に切り替える"""
         self.direct_capture_exe: str = "popnLively.exe"
         """直接取得対象のプロセス名"""
         self.direct_capture_title: str = "pop'n music Lively"
@@ -126,6 +132,22 @@ class Config:
 
             for key in _KEYS:
                 setattr(self, key, d.get(key, getattr(self, key)))
+            if "capture_priority" not in d and d.get("capture_method") in CAPTURE_METHODS:
+                # 旧設定 capture_method (択一式) → capture_priority
+                self.capture_priority = [d["capture_method"]]
+            if not isinstance(self.capture_priority, list):
+                self.capture_priority = []
+            seen: list = []
+            for m in self.capture_priority:
+                if m in CAPTURE_METHODS and m not in seen:
+                    seen.append(m)
+            self.capture_priority = seen or ["direct_window"]
+            try:
+                fallback = int(self.capture_fallback_seconds)
+            except (TypeError, ValueError):
+                fallback = 10
+            low, high = FALLBACK_SECONDS_RANGE
+            self.capture_fallback_seconds = max(low, min(high, fallback))
             if "result_screenshot_conditions" not in d:
                 self.result_screenshot_conditions = list(
                     _LEGACY_SCREENSHOT_MODES.get(d.get("result_screenshot_mode"), [])

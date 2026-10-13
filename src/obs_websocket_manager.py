@@ -84,25 +84,76 @@ class OBSWebSocketManager(QObject):
         self._next_direct_capture_probe_at = 0.0
         self._scene_collection_applied = False
 
+        # 取り込み方式の優先順位 (config.capture_priority) と、現在使っている方式
+        self._method_index = 0
+        self._method_since = time.monotonic()   # 現在の方式を使い始めた/最後にフレームを取れた時刻
+
     # ------------------------------------------------------------------
     # 設定
     # ------------------------------------------------------------------
 
     def set_config(self, config: Config) -> None:
+        """設定を反映する。取り込み方式は最優先のものから試し直す。"""
         self.config = config
+        self._method_index = 0
+        self._method_since = time.monotonic()
+        self._sync_direct_capture()
+        if self.direct_capture:
+            self.direct_capture.set_config(config)
+        self._next_direct_capture_probe_at = 0.0
+
+    def _sync_direct_capture(self) -> None:
+        """現在の方式に合わせて直接取得オブジェクトを用意する (OBS 経由なら破棄)。"""
+        if not self.is_direct_capture():
+            if self.direct_capture and hasattr(self.direct_capture, "close"):
+                self.direct_capture.close()
+            self.direct_capture = None
+            return
         capture_cls = self._direct_capture_class()
         if self.direct_capture is None or not isinstance(self.direct_capture, capture_cls):
             if self.direct_capture and hasattr(self.direct_capture, "close"):
                 self.direct_capture.close()
-            self.direct_capture = capture_cls(config)
-        else:
-            self.direct_capture.set_config(config)
-        self._next_direct_capture_probe_at = 0.0
+            self.direct_capture = capture_cls(self.config)
 
     def _direct_capture_class(self):
-        if self.config and self.config.capture_method == "direct_window_legacy":
+        if self.current_method() == "direct_window_legacy":
             return DirectWindowCapture
         return DxcamWindowCapture
+
+    # ------------------------------------------------------------------
+    # 取り込み方式の優先順位
+    # ------------------------------------------------------------------
+
+    def _priority(self) -> List[str]:
+        if not self.config or not self.config.capture_priority:
+            return ["direct_window"]
+        return list(self.config.capture_priority)
+
+    def current_method(self) -> str:
+        priority = self._priority()
+        return priority[min(self._method_index, len(priority) - 1)]
+
+    def _update_fallback(self, got_frame: bool) -> None:
+        """フレームを取れない時間が設定秒数を超えたら、次の方式へ切り替える。"""
+        now = time.monotonic()
+        if got_frame:
+            self._method_since = now
+            return
+        priority = self._priority()
+        if (
+            self._method_index + 1 >= len(priority) or
+            now - self._method_since < self.config.capture_fallback_seconds
+        ):
+            return
+        prev = self.current_method()
+        self._method_index += 1
+        self._method_since = now
+        self._next_direct_capture_probe_at = 0.0
+        logger.info(
+            "画面取り込み方式を切り替え: %s → %s (%d秒間フレームを取得できず)",
+            prev, self.current_method(), self.config.capture_fallback_seconds,
+        )
+        self._sync_direct_capture()
 
     # ------------------------------------------------------------------
     # 状態判定
@@ -111,13 +162,14 @@ class OBSWebSocketManager(QObject):
     def is_direct_capture(self) -> bool:
         return bool(
             self.config and
-            self.config.capture_method in ("direct_window", "direct_window_legacy")
+            self.current_method() in ("direct_window", "direct_window_legacy")
         )
 
     def uses_obs_websocket(self) -> bool:
+        """OBS WebSocket への接続が必要か (取り込み方式の候補に含む / OBS 制御を使う)。"""
         if not self.config:
             return False
-        if not self.is_direct_capture():
+        if "obs_websocket" in self._priority():
             return True
         return bool(
             self.config.obs_control_settings or
@@ -302,11 +354,17 @@ class OBSWebSocketManager(QObject):
         直接キャプチャ: DxcamWindowCapture / DirectWindowCapture を使用。
         OBS WebSocket: OBS のスクリーンショット API 経由で取得。
         """
+        frame = self._read_current_method()
+        if self.config:
+            self._update_fallback(frame is not None)
+        return frame
+
+    def _read_current_method(self):
         from PIL import Image
 
         if self.is_direct_capture():
             if self.direct_capture is None and self.config:
-                self.direct_capture = self._direct_capture_class()(self.config)
+                self._sync_direct_capture()
             if self.direct_capture is None:
                 return None
             return self.direct_capture.read_frame()

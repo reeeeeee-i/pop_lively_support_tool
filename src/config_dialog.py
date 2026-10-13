@@ -4,11 +4,12 @@ from __future__ import annotations
 from PySide6.QtWidgets import (
     QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QGroupBox,
     QHBoxLayout, QLabel, QLineEdit, QPushButton, QRadioButton, QButtonGroup,
-    QCheckBox, QSlider, QSpinBox, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
+    QCheckBox, QListWidget, QListWidgetItem, QSlider, QSpinBox, QTabWidget,
+    QTextEdit, QVBoxLayout, QWidget,
 )
 from PySide6.QtCore import Qt
 
-from src.config import Config, JPEG_QUALITY_RANGE
+from src.config import CAPTURE_METHODS, Config, FALLBACK_SECONDS_RANGE, JPEG_QUALITY_RANGE
 from src.funcs import load_ui_text
 from src.logger import LOG_MAX_SIZE_MB_RANGE
 
@@ -74,16 +75,36 @@ class ConfigDialog(QDialog):
         # キャプチャ方式
         cap_group = QGroupBox(self.ui.feature.game_capture_group)
         cap_vbox = QVBoxLayout(cap_group)
-        self._cap_grp = QButtonGroup(self)
-        self._cap_direct = QRadioButton(self.ui.feature.capture_method_direct)
-        self._cap_legacy = QRadioButton(self.ui.feature.capture_method_direct_legacy)
-        self._cap_obs    = QRadioButton(self.ui.feature.capture_method_obs)
-        self._cap_grp.addButton(self._cap_direct, 0)
-        self._cap_grp.addButton(self._cap_legacy, 1)
-        self._cap_grp.addButton(self._cap_obs, 2)
-        cap_vbox.addWidget(self._cap_direct)
-        cap_vbox.addWidget(self._cap_legacy)
-        cap_vbox.addWidget(self._cap_obs)
+        cap_vbox.addWidget(QLabel(self.ui.feature.capture_priority_help))
+        self._cap_names = {
+            "direct_window":        self.ui.feature.capture_method_direct,
+            "direct_window_legacy": self.ui.feature.capture_method_direct_legacy,
+            "obs_websocket":        self.ui.feature.capture_method_obs,
+        }
+        self._cap_list = QListWidget()
+        self._cap_list.setFixedHeight(80)
+        self._btn_cap_up = QPushButton(self.ui.feature.capture_move_up)
+        self._btn_cap_down = QPushButton(self.ui.feature.capture_move_down)
+        self._btn_cap_up.clicked.connect(lambda: self._move_capture_item(-1))
+        self._btn_cap_down.clicked.connect(lambda: self._move_capture_item(1))
+        move_col = QVBoxLayout()
+        move_col.addWidget(self._btn_cap_up)
+        move_col.addWidget(self._btn_cap_down)
+        move_col.addStretch()
+        cap_row = QHBoxLayout()
+        cap_row.addWidget(self._cap_list, 1)
+        cap_row.addLayout(move_col)
+        cap_vbox.addLayout(cap_row)
+
+        self._spin_fallback = QSpinBox()
+        self._spin_fallback.setRange(*FALLBACK_SECONDS_RANGE)
+        self._spin_fallback.setSuffix(" 秒")
+        self._spin_fallback.setToolTip(self.ui.feature.capture_fallback_seconds_tip)
+        fb_row = QHBoxLayout()
+        fb_row.addWidget(QLabel(self.ui.feature.capture_fallback_seconds))
+        fb_row.addWidget(self._spin_fallback)
+        fb_row.addStretch()
+        cap_vbox.addLayout(fb_row)
 
         self._chk_all_monitors = QCheckBox(self.ui.feature.direct_capture_all_monitors)
         self._chk_all_monitors.setToolTip(self.ui.feature.direct_capture_all_monitors_tip)
@@ -184,6 +205,22 @@ class ConfigDialog(QDialog):
         layout.addStretch()
         return tab
 
+    def _add_capture_item(self, method: str, checked: bool) -> None:
+        item = QListWidgetItem(self._cap_names[method])
+        item.setData(Qt.ItemDataRole.UserRole, method)
+        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+        item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+        self._cap_list.addItem(item)
+
+    def _move_capture_item(self, delta: int) -> None:
+        row = self._cap_list.currentRow()
+        new_row = row + delta
+        if row < 0 or not 0 <= new_row < self._cap_list.count():
+            return
+        item = self._cap_list.takeItem(row)
+        self._cap_list.insertItem(new_row, item)
+        self._cap_list.setCurrentRow(new_row)
+
     def _on_shot_all_toggled(self, checked: bool):
         """「毎回」を選んだら、他の条件もすべて選んだ状態でグレーアウトする。
 
@@ -264,13 +301,14 @@ class ConfigDialog(QDialog):
     # ------------------------------------------------------------------
 
     def _load_values(self):
-        method = self.config.capture_method
-        if method == "direct_window":
-            self._cap_direct.setChecked(True)
-        elif method == "direct_window_legacy":
-            self._cap_legacy.setChecked(True)
-        else:
-            self._cap_obs.setChecked(True)
+        enabled = [m for m in self.config.capture_priority if m in CAPTURE_METHODS]
+        for method in enabled:
+            self._add_capture_item(method, True)
+        for method in CAPTURE_METHODS:
+            if method not in enabled:
+                self._add_capture_item(method, False)
+        self._cap_list.setCurrentRow(0)
+        self._spin_fallback.setValue(self.config.capture_fallback_seconds)
 
         self._chk_all_monitors.setChecked(self.config.direct_capture_all_monitors)
         self._chk_keep_on_top.setChecked(self.config.keep_on_top)
@@ -294,10 +332,14 @@ class ConfigDialog(QDialog):
         self._edit_obs_scene_col.setText(self.config.obs_scene_collection)
 
     def _apply(self):
-        bid = self._cap_grp.checkedId()
-        self.config.capture_method = [
-            "direct_window", "direct_window_legacy", "obs_websocket"
-        ][bid]
+        priority = []
+        for row in range(self._cap_list.count()):
+            item = self._cap_list.item(row)
+            if item.checkState() == Qt.CheckState.Checked:
+                priority.append(item.data(Qt.ItemDataRole.UserRole))
+        # 1 つも選ばれていなければ、既定の直接取得にする
+        self.config.capture_priority            = priority or ["direct_window"]
+        self.config.capture_fallback_seconds    = self._spin_fallback.value()
         self.config.direct_capture_all_monitors = self._chk_all_monitors.isChecked()
         self.config.keep_on_top                 = self._chk_keep_on_top.isChecked()
         self.config.lively_single_cpu           = self._chk_single_cpu.isChecked()

@@ -289,6 +289,12 @@ class MainWindow(QMainWindow):
         shot_row.addWidget(self.btn_screenshot)
         layout.addLayout(shot_row)
 
+        # 画面取り込みのリロード (最優先の方式から試し直す)
+        self.btn_reload_capture = QPushButton(self.ui.main_display.reload_capture)
+        self.btn_reload_capture.setToolTip(self.ui.main_display.reload_capture_tip)
+        self.btn_reload_capture.clicked.connect(lambda: self._apply_obs_config())
+        shot_row.addWidget(self.btn_reload_capture)
+
         # リセットボタン
         self.btn_reset = QPushButton(self.ui.main_display.reset_notes)
         self.btn_reset.clicked.connect(self._reset_counts)
