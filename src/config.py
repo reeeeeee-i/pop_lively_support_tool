@@ -5,7 +5,9 @@ import json
 import os
 import traceback
 
-from src.logger import get_logger
+from src.logger import (
+    DEFAULT_LOG_MAX_SIZE_MB, LOG_MAX_SIZE_MB_RANGE, get_logger, set_log_max_size_mb,
+)
 
 logger = get_logger(__name__)
 
@@ -26,6 +28,7 @@ _KEYS = (
     "language",
     "keep_on_top",
     "lively_single_cpu",
+    "log_max_size_mb",
     "score_csv_path",
     "score_db_path",
     "score_history_columns",
@@ -83,6 +86,8 @@ class Config:
         self.main_window_height: int = 340
         self.lively_single_cpu: bool = False
         """Lively の CPU 割り当てを 1 コアに絞る（ロード時間短縮）"""
+        self.log_max_size_mb: int = DEFAULT_LOG_MAX_SIZE_MB
+        """ログフォルダ全体の最大容量 (MB)。超えた分は古いログから削除する"""
 
         # スコア記録 CSV パス
         self.score_csv_path: str = "popn_score.csv"
@@ -106,6 +111,7 @@ class Config:
         """JPEG の品質 (10～100)。小さいほど圧縮率が高く、ファイルが小さくなる"""
 
         self.load_config()
+        self.apply_log_settings()
         self.save_config()
 
     # ------------------------------------------------------------------
@@ -134,12 +140,22 @@ class Config:
                 quality = 85
             low, high = JPEG_QUALITY_RANGE
             self.result_screenshot_jpeg_quality = max(low, min(high, quality))
+            try:
+                log_size = int(self.log_max_size_mb)
+            except (TypeError, ValueError):
+                log_size = DEFAULT_LOG_MAX_SIZE_MB
+            low, high = LOG_MAX_SIZE_MB_RANGE
+            self.log_max_size_mb = max(low, min(high, log_size))
             window = d.get("window", {})
             for key, attr in _WINDOW_KEYS.items():
                 setattr(self, attr, window.get(key, getattr(self, attr)))
 
         except Exception:
             logger.error(traceback.format_exc())
+
+    def apply_log_settings(self) -> None:
+        """ログの最大容量をロガーに反映する。"""
+        set_log_max_size_mb(self.log_max_size_mb)
 
     def save_config(self) -> None:
         try:

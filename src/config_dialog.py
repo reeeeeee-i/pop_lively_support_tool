@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt
 
 from src.config import Config, JPEG_QUALITY_RANGE
 from src.funcs import load_ui_text
+from src.logger import LOG_MAX_SIZE_MB_RANGE
 
 # 1920x1080 のリザルト画面を保存したときのファイルサイズの目安 (KB)。実測の平均値
 _PNG_SIZE_KB = 1630
@@ -97,6 +98,16 @@ class ConfigDialog(QDialog):
         self._chk_single_cpu = QCheckBox(self.ui.feature.lively_single_cpu)
         self._chk_single_cpu.setToolTip(self.ui.feature.lively_single_cpu_tip)
         other_form.addRow(self._chk_single_cpu)
+        self._spin_log_size = QSpinBox()
+        self._spin_log_size.setRange(*LOG_MAX_SIZE_MB_RANGE)
+        self._spin_log_size.setSuffix(" MB")
+        self._spin_log_size.setToolTip(self.ui.feature.log_max_size_tip)
+        lbl_log_size = QLabel(self.ui.feature.log_max_size)
+        lbl_log_size.setToolTip(self.ui.feature.log_max_size_tip)
+        log_row = QHBoxLayout()
+        log_row.addWidget(self._spin_log_size)
+        log_row.addStretch()
+        other_form.addRow(lbl_log_size, log_row)
         layout.addWidget(other_group)
 
         # スコア保存時の条件
@@ -264,6 +275,7 @@ class ConfigDialog(QDialog):
         self._chk_all_monitors.setChecked(self.config.direct_capture_all_monitors)
         self._chk_keep_on_top.setChecked(self.config.keep_on_top)
         self._chk_single_cpu.setChecked(self.config.lively_single_cpu)
+        self._spin_log_size.setValue(self.config.log_max_size_mb)
         self._chk_skip_retire.setChecked(self.config.score_skip_retire)
         # 「毎回」は他の条件を上書きするので、他の条件を反映してから最後に設定する
         for key in ("best", "fullcombo", "perfect", "all"):
@@ -289,6 +301,7 @@ class ConfigDialog(QDialog):
         self.config.direct_capture_all_monitors = self._chk_all_monitors.isChecked()
         self.config.keep_on_top                 = self._chk_keep_on_top.isChecked()
         self.config.lively_single_cpu           = self._chk_single_cpu.isChecked()
+        self.config.log_max_size_mb             = self._spin_log_size.value()
         self.config.score_skip_retire           = self._chk_skip_retire.isChecked()
         if self._chk_shot_conds["all"].isChecked():
             # 「毎回」を外したときに戻せるよう、選ぶ前の条件を一緒に保存する

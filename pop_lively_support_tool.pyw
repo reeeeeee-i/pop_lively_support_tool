@@ -674,6 +674,7 @@ class MainWindow(QMainWindow):
         dlg = ConfigDialog(self.config, self)
         if dlg.exec():
             self.config.save_config()
+            self.config.apply_log_settings()
             # キャプチャ方式の変更を反映
             self._apply_obs_config()
             # 最前面フラグの更新 (フラグを変えるとウィンドウが隠れるので表示し直す)
