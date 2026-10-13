@@ -82,7 +82,7 @@ class ConfigDialog(QDialog):
             "obs_websocket":        self.ui.feature.capture_method_obs,
         }
         self._cap_list = QListWidget()
-        self._cap_list.setFixedHeight(80)
+        self._cap_list.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._btn_cap_up = QPushButton(self.ui.feature.capture_move_up)
         self._btn_cap_down = QPushButton(self.ui.feature.capture_move_down)
         self._btn_cap_up.clicked.connect(lambda: self._move_capture_item(-1))
@@ -308,6 +308,10 @@ class ConfigDialog(QDialog):
             if method not in enabled:
                 self._add_capture_item(method, False)
         self._cap_list.setCurrentRow(0)
+        # 全項目が収まる高さに固定する (スクロールさせない)
+        self._cap_list.setFixedHeight(
+            self._cap_list.sizeHintForRow(0) * self._cap_list.count() + 2 * self._cap_list.frameWidth() + 4
+        )
         self._spin_fallback.setValue(self.config.capture_fallback_seconds)
 
         self._chk_all_monitors.setChecked(self.config.direct_capture_all_monitors)
