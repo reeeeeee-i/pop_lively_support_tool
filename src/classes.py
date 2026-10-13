@@ -123,6 +123,8 @@ class PopnScoreRecord:
     ver: str = ""
     modified: bool = False
     """記録後にスコア内容を手動修正したか"""
+    screenshot_file: str = ""
+    """リザルトのスクリーンショットのファイル名 (保存先フォルダ内)。保存していなければ空"""
 
     def __post_init__(self):
         if not self.timestamp:

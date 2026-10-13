@@ -1,6 +1,7 @@
 """スコア履歴ダイアログ"""
 from __future__ import annotations
 
+import os
 import re
 import unicodedata
 from typing import Callable, NamedTuple
@@ -102,6 +103,7 @@ _COLUMNS: list[_Column] = [
     _Column("auto",       "AUTO",         lambda r: r.options.auto, 60),
     _Column("played_at",  "プレー日時",   lambda r: r.timestamp, 140),
     _Column("modified",   "修正済",       lambda r: "○" if r.modified else "", 55),
+    _Column("screenshot", "画像",         lambda r: "📷" if r.screenshot_file else "", 45),
 ]
 
 
@@ -266,6 +268,25 @@ def export_csv_with_dialog(parent, score_manager: ScoreManager) -> None:
         QMessageBox.critical(parent, "エラー", f"CSV出力に失敗しました:\n{e}")
 
 
+def open_screenshot(parent, record: PopnScoreRecord, config: Config | None) -> None:
+    """記録に紐づくスクリーンショットを既定のアプリで開く。ファイルは設定の保存先フォルダ内を探す。"""
+    if not record.screenshot_file:
+        QMessageBox.information(parent, "スクリーンショット", "この記録にはスクリーンショットがありません。")
+        return
+    folder = config.result_screenshot_dir if config else "result_screenshots"
+    path = os.path.abspath(os.path.join(folder, record.screenshot_file))
+    if not os.path.isfile(path):
+        QMessageBox.warning(
+            parent, "スクリーンショット",
+            f"ファイルが見つかりません:\n{path}\n\n保存先フォルダを変更した場合は、ファイルを新しいフォルダへ移してください。",
+        )
+        return
+    try:
+        os.startfile(path)
+    except OSError as e:
+        QMessageBox.warning(parent, "スクリーンショット", f"開けませんでした:\n{e}")
+
+
 def _confirm_and_delete(
     parent, score_manager: ScoreManager, records: list[PopnScoreRecord]
 ) -> bool:
@@ -297,9 +318,13 @@ def _confirm_and_delete(
 class ScoreDetailDialog(QDialog):
     """スコア記録 1 件の詳細表示・修正ダイアログ"""
 
-    def __init__(self, record: PopnScoreRecord, score_manager: ScoreManager, parent=None):
+    def __init__(
+        self, record: PopnScoreRecord, score_manager: ScoreManager, parent=None,
+        config: Config | None = None,
+    ):
         super().__init__(parent)
         self.record = record
+        self.config = config
         self.score_manager = score_manager
         self._music_id = record.music_id
         self._levels: dict = {}
@@ -399,6 +424,11 @@ class ScoreDetailDialog(QDialog):
         btn_delete.setAutoDefault(False)
         btn_delete.clicked.connect(self._delete)
         bottom_hbox.addWidget(btn_delete)
+        btn_shot = QPushButton("スクリーンショットを開く")
+        btn_shot.setAutoDefault(False)
+        btn_shot.setEnabled(bool(r.screenshot_file))
+        btn_shot.clicked.connect(lambda: open_screenshot(self, self.record, self.config))
+        bottom_hbox.addWidget(btn_shot)
         bottom_hbox.addStretch()
         bottom_hbox.addWidget(buttons)
         layout.addLayout(bottom_hbox)
@@ -542,7 +572,7 @@ class ScoreHistoryDialog(QDialog):
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.setHorizontalScrollMode(QTableWidget.ScrollMode.ScrollPerPixel)
         self._table.setToolTip("行をダブルクリックすると詳細を表示し、内容を修正できます。")
-        self._table.cellDoubleClicked.connect(self._open_detail)
+        self._table.cellDoubleClicked.connect(self._on_cell_double_clicked)
         self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._table.customContextMenuRequested.connect(self._show_row_menu)
         hdr = self._table.horizontalHeader()
@@ -687,10 +717,17 @@ class ScoreHistoryDialog(QDialog):
             return
         super().keyPressEvent(event)
 
+    def _on_cell_double_clicked(self, row: int, column: int):
+        # 画像列のダブルクリックはスクリーンショットを開く。それ以外は詳細を開く
+        if 0 <= row < len(self._rows) and _COLUMNS[column].key == "screenshot"                 and self._rows[row].screenshot_file:
+            open_screenshot(self, self._rows[row], self.config)
+        else:
+            self._open_detail(row)
+
     def _open_detail(self, row: int, _column: int = 0):
         if not 0 <= row < len(self._rows):
             return
-        dlg = ScoreDetailDialog(self._rows[row], self.score_manager, self)
+        dlg = ScoreDetailDialog(self._rows[row], self.score_manager, self, config=self.config)
         if dlg.exec():
             self._load_records()
             self._table.selectRow(row)
@@ -705,10 +742,14 @@ class ScoreHistoryDialog(QDialog):
             self._table.selectRow(row)
         menu = QMenu(self)
         act_edit = menu.addAction("編集...")
+        act_shot = menu.addAction("スクリーンショットを開く")
+        act_shot.setEnabled(bool(self._rows[row].screenshot_file))
         act_delete = menu.addAction("削除")
         chosen = menu.exec(self._table.viewport().mapToGlobal(pos))
         if chosen is act_edit:
             self._open_detail(row)
+        elif chosen is act_shot:
+            open_screenshot(self, self._rows[row], self.config)
         elif chosen is act_delete:
             self._delete_selected()
 

@@ -171,6 +171,13 @@ class ScoreManager:
             and r.difficulty_code == record.difficulty_code
         )
 
+    def set_screenshot_file(self, record: PopnScoreRecord, filename: str) -> None:
+        """記録にスクリーンショットのファイル名を紐づける。"""
+        if record.record_id is None:
+            return
+        self.db.set_screenshot_file(record.record_id, filename)
+        record.screenshot_file = filename
+
     def update_record(self, record: PopnScoreRecord) -> None:
         """手動修正したスコア記録を DB に反映し、履歴を読み込み直す。"""
         self.db.update_score(record)

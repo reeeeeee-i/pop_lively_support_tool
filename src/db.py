@@ -85,6 +85,7 @@ _SCORES_ADDED_COLUMNS = (
     ("modified", "INTEGER DEFAULT 0"),  # 修正済フラグ
     ("ojama1_zutto", "TEXT DEFAULT 'OFF'"),
     ("ojama2_zutto", "TEXT DEFAULT 'OFF'"),
+    ("screenshot_file", "TEXT DEFAULT ''"),  # リザルトのスクリーンショットのファイル名 (無ければ空)
 )
 
 _MUSIC_COLUMNS = "music_id, title, genre, artist, ver, easy, normal, hyper, ex"
@@ -652,6 +653,13 @@ class PopnDatabase:
                 (*values, record.record_id),
             )
 
+    def set_screenshot_file(self, record_id: int, filename: str) -> None:
+        """スコア記録にスクリーンショットのファイル名を紐づける。"""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE scores SET screenshot_file = ? WHERE id = ?;", (filename, record_id)
+            )
+
     def get_music(self, music_id: str) -> dict | None:
         """曲テーブルの 1 曲を返す。未登録なら None。"""
         with self._conn:
@@ -706,7 +714,8 @@ class PopnDatabase:
                     s.combo,
                     {", ".join(f"s.{key}" for key in OPTION_KEYS)},
                     s.played_at,
-                    COALESCE(s.modified, 0) AS modified
+                    COALESCE(s.modified, 0) AS modified,
+                    COALESCE(s.screenshot_file, '') AS screenshot_file
                 FROM scores s
                 LEFT JOIN musics m ON s.music_id = m.music_id
                 ORDER BY s.played_at ASC, s.id ASC;
@@ -736,6 +745,7 @@ class PopnDatabase:
                 artist=r["artist"],
                 ver=r["ver"],
                 modified=bool(r["modified"]),
+                screenshot_file=r["screenshot_file"],
             ))
         return records
 
