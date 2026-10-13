@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QGroupBox,
     QFormLayout,
+    QHBoxLayout,
     QLabel,
     QMainWindow,
     QMenuBar,
@@ -276,7 +277,13 @@ class MainWindow(QMainWindow):
         # リセットボタン
         self.btn_reset = QPushButton(self.ui.main_display.reset_notes)
         self.btn_reset.clicked.connect(self._reset_counts)
-        layout.addWidget(self.btn_reset)
+        self.btn_screenshot = QPushButton("📷")
+        self.btn_screenshot.setToolTip(self.ui.main_display.screenshot_tip)
+        self.btn_screenshot.clicked.connect(self._manual_screenshot)
+        reset_row = QHBoxLayout()
+        reset_row.addWidget(self.btn_reset, 1)
+        reset_row.addWidget(self.btn_screenshot)
+        layout.addLayout(reset_row)
 
         layout.addStretch()
 
@@ -560,6 +567,30 @@ class MainWindow(QMainWindow):
             logger.info("リザルトのスクリーンショットを保存: %s", path)
         except Exception as e:
             logger.error("スクリーンショット保存エラー: %s", e)
+
+    def _manual_screenshot(self):
+        """現在の画面を、設定の保存先・形式でスクリーンショットとして保存する。"""
+        try:
+            image = self.obs_manager.read_frame()
+            if image is None:
+                self._statusbar.showMessage(self.ui.status.screenshot_no_frame, 6000)
+                return
+            folder = self.config.result_screenshot_dir
+            os.makedirs(folder, exist_ok=True)
+            jpeg = self.config.result_screenshot_format == "jpeg"
+            ext = "jpg" if jpeg else "png"
+            path = os.path.join(folder, f"{datetime.now():%Y%m%d_%H%M%S}_manual.{ext}")
+            if jpeg:
+                image.convert("RGB").save(
+                    path, "JPEG", quality=self.config.result_screenshot_jpeg_quality
+                )
+            else:
+                image.save(path)
+            logger.info("スクリーンショットを手動で保存: %s", path)
+            self._statusbar.showMessage(self.ui.status.screenshot_saved.format(path=path), 6000)
+        except Exception:
+            logger.error(traceback.format_exc())
+            self._statusbar.showMessage(self.ui.status.screenshot_failed, 6000)
 
     def _set_last_played_song(self, title: str, difficulty: str):
         self._last_played_song = format_song(title, difficulty)

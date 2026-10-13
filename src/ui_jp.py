@@ -31,6 +31,9 @@ class UIText:
         exit             = "終了画面"
         loading          = "ロード中"
         retire_skipped   = "リタイアのためスコアを保存しませんでした"
+        screenshot_saved = "スクリーンショットを保存しました: {path}"
+        screenshot_failed = "スクリーンショットを保存できませんでした"
+        screenshot_no_frame = "スクリーンショットを保存できません（画面を取得できていません）"
         obs_connected    = "OBS 接続中"
         obs_disconnected = "OBS 未接続"
 
@@ -101,4 +104,5 @@ class UIText:
         today_notes    = "本日の打鍵数"
         last_song      = "最後にプレイした曲"
         reset_notes    = "本日の打鍵数をリセット"
+        screenshot_tip = "現在の画面のスクリーンショットを保存"
         none_song      = "なし"
