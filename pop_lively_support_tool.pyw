@@ -583,6 +583,8 @@ class MainWindow(QMainWindow):
             else:
                 image.save(path)
             logger.info("リザルトのスクリーンショットを保存: %s", path)
+            # スコアビュワーから開けるよう、ファイル名をスコア記録に紐づける (フォルダは設定から合成する)
+            self.score_manager.set_screenshot_file(record, name)
         except Exception as e:
             logger.error("スクリーンショット保存エラー: %s", e)
 
