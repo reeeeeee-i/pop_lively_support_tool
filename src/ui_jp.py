@@ -48,6 +48,11 @@ class UIText:
             "Lively の起動を検出したら、使用率が最小の CPU だけを割り当て、優先度を「高」にします。\n"
             "無効に戻すと、起動中の Lively の割り当ても元に戻します。"
         )
+        log_max_size                    = "ログの最大容量"
+        log_max_size_tip                = (
+            "log フォルダ全体の容量の上限です。\n"
+            "上限を超えると、古いログから自動的に削除します。"
+        )
         score_save_group                = "スコア保存時の条件"
         score_skip_retire               = "retire 時は保存しない"
         score_skip_retire_tip           = (
