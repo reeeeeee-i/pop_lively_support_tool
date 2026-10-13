@@ -52,6 +52,9 @@ _SCORE_BOX_RATIO = 0.37
 _RETIRE_X = (760, 1160)
 _RETIRE_Y = (-62, -12)
 _RETIRE_MIN_FRAC = 0.3   # プレートの地色 (薄紫) がこの割合以上を占めればリタイアとみなす
+# 「NEW RECORD!」の帯の範囲。y は SCORE ボックス上端からの相対位置、x はパネルの左右端
+_NEW_RECORD_Y = (-62, -5)
+_NEW_RECORD_MIN_FRAC = 0.04  # 帯の黄色い文字がこの割合以上を占めれば NEW RECORD とみなす
 
 
 @dataclass
@@ -100,6 +103,7 @@ class ResultValues:
     diff: int | None = None
     score_verified: bool = False   # SCORE が「前回ベスト + 差分」と一致したか
     retire: bool = False           # リタイアしたプレーか (「Retire」プレートの有無)
+    new_record: bool = False       # 「NEW RECORD!」の帯が表示されているか
     notes: list[str] = field(default_factory=list)
 
     @property
@@ -233,6 +237,21 @@ def is_retire(arr: np.ndarray, panel: PanelBoxes) -> bool:
     r, g, b = region[..., 0], region[..., 1], region[..., 2]
     plate = (r > 200) & (g > 180) & (g < 235) & (b > 235) & (r - g > 8)
     return bool(plate.mean() >= _RETIRE_MIN_FRAC)
+
+
+def is_new_record(arr: np.ndarray, panel: PanelBoxes) -> bool:
+    """SCORE ボックスの上に「NEW RECORD!」の帯が表示されているか。
+
+    帯は赤・黄などの派手な文字で、通常は青いパネル枠 (または Retire プレート) しかない。
+    黄色の画素の割合で判定する。
+    """
+    y0, y1 = (max(0, panel.score[0] + dy) for dy in _NEW_RECORD_Y)
+    region = arr[y0:y1, panel.x0:panel.x1].astype(np.int16)
+    if region.size == 0:
+        return False
+    r, g, b = region[..., 0], region[..., 1], region[..., 2]
+    yellow = (r > 220) & (g > 170) & (b < 100)
+    return bool(yellow.mean() >= _NEW_RECORD_MIN_FRAC)
 
 
 def _locate_judge_rows(arr: np.ndarray, panel: PanelBoxes) -> list[tuple[int, int]]:
@@ -428,7 +447,7 @@ def read_result_values(image: Image.Image) -> ResultValues | None:
     if panel is None:
         return None
 
-    v = ResultValues(retire=is_retire(arr, panel))
+    v = ResultValues(retire=is_retire(arr, panel), new_record=is_new_record(arr, panel))
     dists = {}
     for name in ("cool", "great", "good", "bad", "combo", "best", "diff"):
         value, dists[name] = _read_row(arr, panel, name, v.notes)

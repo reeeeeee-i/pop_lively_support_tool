@@ -156,21 +156,6 @@ class ScoreManager:
         )
         return True
 
-    def is_personal_best(self, record: PopnScoreRecord) -> bool:
-        """記録済みの record が、同じ曲・難易度の他の記録のスコアをすべて上回っているか。
-
-        初プレーの譜面は自己ベストとして扱う。曲を特定できていない記録は比較できないため True を返す。
-        """
-        if not record.music_id:
-            return True
-        return all(
-            record.score > r.score
-            for r in self.records
-            if r is not record
-            and r.music_id == record.music_id
-            and r.difficulty_code == record.difficulty_code
-        )
-
     def set_screenshot_file(self, record: PopnScoreRecord, filename: str) -> None:
         """記録にスクリーンショットのファイル名を紐づける。"""
         if record.record_id is None:
