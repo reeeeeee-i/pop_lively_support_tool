@@ -439,6 +439,8 @@ class OBSControlDialog(QDialog):
         for col, item in enumerate(items):
             if color:
                 item.setBackground(color)
+                # 背景が淡色のため、ダークモードでも読めるよう文字色を固定
+                item.setForeground(QColor(0, 0, 0))
             self._table.setItem(row, col, item)
 
         # 設定データをセルに保持
