@@ -188,7 +188,11 @@ class MainWindow(QMainWindow):
 
         file_menu.addSeparator()
 
-        act_reset = QAction(self.ui.menu.reset_count, self)
+        act_open_shot_dir = QAction(self.ui.menu.open_screenshot_dir, self)
+        act_open_shot_dir.triggered.connect(self._open_screenshot_dir)
+        file_menu.addAction(act_open_shot_dir)
+
+        act_reset =QAction(self.ui.menu.reset_count, self)
         act_reset.triggered.connect(self._reset_counts)
         file_menu.addAction(act_reset)
 
@@ -274,16 +278,21 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(info_group)
 
-        # リセットボタン
-        self.btn_reset = QPushButton(self.ui.main_display.reset_notes)
-        self.btn_reset.clicked.connect(self._reset_counts)
+        # スクリーンショット行: フォルダを開く + 手動撮影
+        self.btn_open_shot_dir = QPushButton(self.ui.main_display.open_screenshot_dir)
+        self.btn_open_shot_dir.clicked.connect(self._open_screenshot_dir)
         self.btn_screenshot = QPushButton("📷")
         self.btn_screenshot.setToolTip(self.ui.main_display.screenshot_tip)
         self.btn_screenshot.clicked.connect(self._manual_screenshot)
-        reset_row = QHBoxLayout()
-        reset_row.addWidget(self.btn_reset, 1)
-        reset_row.addWidget(self.btn_screenshot)
-        layout.addLayout(reset_row)
+        shot_row = QHBoxLayout()
+        shot_row.addWidget(self.btn_open_shot_dir, 1)
+        shot_row.addWidget(self.btn_screenshot)
+        layout.addLayout(shot_row)
+
+        # リセットボタン
+        self.btn_reset = QPushButton(self.ui.main_display.reset_notes)
+        self.btn_reset.clicked.connect(self._reset_counts)
+        layout.addWidget(self.btn_reset)
 
         layout.addStretch()
 
@@ -534,6 +543,15 @@ class MainWindow(QMainWindow):
                 self._set_last_played_song(song_title, record.difficulty)
         except Exception as e:
             logger.error("スコア保存処理エラー: %s", e)
+
+    def _open_screenshot_dir(self):
+        """スクリーンショットの保存先フォルダをエクスプローラーで開く。"""
+        folder = os.path.abspath(self.config.result_screenshot_dir)
+        try:
+            os.makedirs(folder, exist_ok=True)
+            os.startfile(folder)
+        except Exception:
+            logger.exception("スクリーンショットフォルダを開けませんでした: %s", folder)
 
     def _save_result_screenshot(self, image, record):
         """設定に応じて、記録したリザルト画面のスクリーンショットを保存する。"""
