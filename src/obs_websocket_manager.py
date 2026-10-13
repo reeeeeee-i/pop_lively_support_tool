@@ -133,6 +133,10 @@ class OBSWebSocketManager(QObject):
         priority = self._priority()
         return priority[min(self._method_index, len(priority) - 1)]
 
+    def restart_fallback_timer(self) -> None:
+        """切り替えまでの待ち時間を数え直す (接続処理で止まっていた分を数えない)。"""
+        self._method_since = time.monotonic()
+
     def _update_fallback(self, got_frame: bool) -> None:
         """フレームを取れない時間が設定秒数を超えたら、次の方式へ切り替える。"""
         now = time.monotonic()
@@ -527,4 +531,4 @@ class OBSWebSocketManager(QObject):
             return
         self._next_direct_capture_probe_at = now + 3.0
         self.direct_capture.clear_pending_error()
-        self.read_frame()
+        self._read_current_method()  # 方式切替の判定には使わない

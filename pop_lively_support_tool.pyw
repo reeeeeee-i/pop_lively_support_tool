@@ -331,6 +331,7 @@ class MainWindow(QMainWindow):
             self.obs_manager.connect()
         else:
             self.obs_manager.disconnect_obs()
+        self.obs_manager.restart_fallback_timer()
 
     def _on_obs_connection_changed(self, connected: bool, message: str):
         if connected:
