@@ -43,6 +43,14 @@ class UIText:
         capture_method_direct           = "直接取得 (DXCAM)"
         capture_method_direct_legacy    = "直接取得 (旧方式)"
         capture_method_obs              = "OBS WebSocket 経由"
+        capture_priority_help           = (
+            "チェックを入れた方式を、上から順に試します。"
+            "指定秒数フレームを取得できないと、次の方式に切り替えます。"
+        )
+        capture_move_up                 = "↑"
+        capture_move_down               = "↓"
+        capture_fallback_seconds        = "切り替えまでの待ち時間"
+        capture_fallback_seconds_tip    = "この秒数フレームを取得できなかったら、次の方式に切り替えます。"
         direct_capture_all_monitors     = "常に全モニターを対象にする"
         direct_capture_all_monitors_tip = "旧直接取得で使います。"
         other_group                     = "その他"
@@ -112,4 +120,6 @@ class UIText:
         reset_notes    = "本日の打鍵数をリセット"
         screenshot_tip = "現在の画面のスクリーンショットを保存"
         open_screenshot_dir = "スクリーンショットのフォルダを開く"
-        none_song      = "なし"
+        reload_capture = "🔄"
+        reload_capture_tip = "画面取り込みをリロード (最優先の方式から試し直す)"
+        none_song     = "なし"
