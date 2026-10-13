@@ -142,6 +142,7 @@ class MainWindow(QMainWindow):
         self._result_values = None   # 直近に全項目を読めた値
         self._result_image = None    # 直近のリザルト画面フレーム
         self._result_retire = False  # リザルト画面で「Retire」の表示を検出したか
+        self._result_new_record = False  # リザルト画面で「NEW RECORD!」の表示を検出したか
 
         self._setup_ui()
         self._setup_obs()
@@ -417,6 +418,7 @@ class MainWindow(QMainWindow):
             self._result_values = None
             self._result_image = None
             self._result_retire = False
+            self._result_new_record = False
 
     def _leave_mode(self, mode: DetectMode):
         if mode == DetectMode.result:
@@ -489,6 +491,9 @@ class MainWindow(QMainWindow):
         # 「Retire」の表示が数値より遅れて出ても拾えるよう、一度でも検出したら覚えておく
         if values is not None and values.retire:
             self._result_retire = True
+        # 「NEW RECORD!」の帯も表示が遅れたり点滅したりするため、一度でも検出したら覚えておく
+        if values is not None and values.new_record:
+            self._result_new_record = True
 
         if values is not None and values.is_complete:
             same = self._result_values is not None and values.key() == self._result_values.key()
@@ -542,7 +547,7 @@ class MainWindow(QMainWindow):
                 chart_info = f"[Lv{record.level} {record.difficulty_code}] " if record.level else f"[{record.difficulty_code}] "
                 msg = f"スコア保存: {chart_info}{record.title} | {record.score}点 ({record.options.to_summary()})"
                 self._statusbar.showMessage(msg, 6000)
-                self._save_result_screenshot(image, record)
+                self._save_result_screenshot(image, record, values)
 
             # 最後にプレイした曲の表示を更新
             song_title = record.title if record.title != "Unknown" else self.score_manager.current_song_title
@@ -560,16 +565,20 @@ class MainWindow(QMainWindow):
         except Exception:
             logger.exception("スクリーンショットフォルダを開けませんでした: %s", folder)
 
-    def _save_result_screenshot(self, image, record):
+    def _save_result_screenshot(self, image, record, values):
         """設定に応じて、記録したリザルト画面のスクリーンショットを保存する。"""
         conds = self.config.result_screenshot_conditions
         # リタイアしたプレーは BAD が 0 でも FULL COMBO / PERFECT として扱わない
         full_combo = not self._result_retire and record.total_notes > 0 and record.bad == 0
+        # 自己ベスト更新 = 「NEW RECORD!」の表示があり、BEST SCORE の差分が + であること。
+        # 手元カメラ等で BEST SCORE 欄が読めなかったときは、帯の表示だけで判断する
+        diff = values.diff if values is not None else None
+        personal_best = self._result_new_record and (diff is None or diff > 0)
         if not (
             "all" in conds
             or ("fullcombo" in conds and full_combo)
             or ("perfect" in conds and full_combo and record.good == 0)
-            or ("best" in conds and self.score_manager.is_personal_best(record))
+            or ("best" in conds and personal_best)
         ):
             return
         try:
