@@ -34,6 +34,11 @@ def main() -> None:
     nolevel = [s for s in new if not any(s.get(k) for k in ("easy", "normal", "hyper", "ex"))]
     if len(nolevel) > len(old) * 0.02:
         problems.append(f"レベルが 1 つも取れていない曲が多すぎます: {len(nolevel)} 曲")
+    old_banners = sum(1 for s in old if s.get("banner"))
+    new_banners = sum(1 for s in new if s.get("banner"))
+    if new_banners < old_banners * MIN_RATIO:
+        problems.append(f"バナーの特徴量が減りすぎています: {old_banners} -> {new_banners}")
+    print(f"バナー {old_banners} -> {new_banners}")
     print(f"曲数 {len(old)} -> {len(new)} / なくなった曲 {len(dropped)} / レベル無し {len(nolevel)}")
     if problems:
         for p in problems:

@@ -49,3 +49,6 @@ result_screenshots/
 
 # 曲リスト生成用に Wiki から取得した HTML
 tmp_scrape/
+
+# 公式サイトから取得したバナー画像 (配布しない)
+tmp_banners/

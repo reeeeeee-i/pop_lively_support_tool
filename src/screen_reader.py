@@ -9,6 +9,7 @@ import imagehash
 import numpy as np
 from PIL import Image
 
+from src.banner_reader import read_banner
 from src.classes import DetectMode, PopnJudge, PopnOptions, PopnScoreRecord
 from src.define import (
     PosIsPlay,
@@ -290,6 +291,16 @@ class ScreenReader:
             return values if values is not None else read_option_icons(image)
         except Exception as e:
             logger.error("オプション読み取りエラー: %s", e)
+            return None
+
+    def read_banner(self, image: Image.Image):
+        """オプション画面中央上の曲バナーの特徴量を読み取る。バナーが表示されていなければ None。
+        曲の特定は ScoreManager.identify_banner で行う。
+        """
+        try:
+            return read_banner(image)
+        except Exception as e:
+            logger.error("バナー読み取りエラー: %s", e)
             return None
 
     # ------------------------------------------------------------------

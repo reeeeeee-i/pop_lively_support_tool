@@ -4,6 +4,7 @@ import re
 import html
 import unicodedata
 import uuid
+import sys
 from collections import defaultdict
 
 def clean_cell(cell_html):
@@ -330,7 +331,98 @@ def assign_music_ids(songs, existing_songs):
     unused = [e for e in existing_songs if e.get('music_id') and e['music_id'] not in used]
     return n_kept, len(songs) - n_kept, unused
 
+_ENTRY_KEY_FUNCS = [
+    lambda x: (norm(x['genre']), norm(x['title']), norm(x['artist'])),
+    lambda x: (norm(x['title']), norm(x['artist'])),
+    lambda x: (norm(x['genre']), norm(x['title'])),
+    lambda x: norm(x['title']),
+]
+
+def build_entry_pools(entries):
+    """公式サイトの曲 (genre / title / artist / banner を持つ dict) の照合用索引を作る。"""
+    pools = [defaultdict(list) for _ in _ENTRY_KEY_FUNCS]
+    for e in entries:
+        for pool, kf in zip(pools, _ENTRY_KEY_FUNCS):
+            pool[kf(e)].append(e)
+    return pools
+
+def find_entry(song, pools):
+    """曲に対応する公式サイトの曲を返す。見つからない (または同じキーに別のバナーが複数ある) ときは None。"""
+    for pool, kf in zip(pools, _ENTRY_KEY_FUNCS):
+        found = pool.get(kf(song), [])
+        # 同じキーに別のバナーが複数あるときは決められないので、より厳しいキーで探す
+        if found and len({e['banner'] for e in found}) == 1:
+            return found[0]
+    return None
+
+def attach_banners(songs, existing_songs, banner_dir):
+    """各曲にバナー画像の特徴量 (banner) を付ける。
+
+    banner_dir は tools/fetch_banners.py の出力 (index.json と banners/*.png)。
+    公式サイトの曲と照合できて画像がある曲は、その画像から特徴量を作る。照合できなかった曲、
+    画像が無い曲、または banner_dir が無いときは、既存の曲リストの特徴量を (music_id で) 引き継ぐ。
+    戻り値は (画像から作った数, 引き継いだ数, バナーが無い曲のリスト)。
+    """
+    from PIL import Image
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from src.banner_reader import banner_feature, encode_feature
+
+    entries = []
+    index_path = os.path.join(banner_dir, 'index.json')
+    if os.path.exists(index_path):
+        with open(index_path, 'r', encoding='utf-8') as f:
+            entries = json.load(f)
+
+    pools = build_entry_pools(entries)
+
+    features = {}   # バナーのファイル名 → 特徴量の文字列
+    def feature_of(entry):
+        name = entry['banner']
+        if name not in features:
+            try:
+                with Image.open(os.path.join(banner_dir, 'banners', name)) as im:
+                    features[name] = encode_feature(banner_feature(im))
+            except (OSError, ValueError):
+                features[name] = ''
+        return features[name]
+
+    old_banner = {e['music_id']: e['banner'] for e in existing_songs if e.get('music_id') and e.get('banner')}
+    n_new = n_kept = 0
+    missing = []
+    for song in songs:
+        entry = find_entry(song, pools)
+        banner = feature_of(entry) if entry else ''
+        if banner:
+            n_new += 1
+        elif song['music_id'] in old_banner:
+            banner = old_banner[song['music_id']]
+            n_kept += 1
+        else:
+            missing.append(song)
+        if banner:
+            song['banner'] = banner
+    return n_new, n_kept, missing
+
+def write_music_list(songs, out_path):
+    with open(out_path, 'w', encoding='utf-8', newline='\n') as f:
+        json.dump(songs, f, ensure_ascii=False, indent=2)
+    print(f'Wrote {len(songs)} songs to {out_path} ({os.path.getsize(out_path)} bytes)')
+
+def report_banners(n_new, n_kept, missing):
+    print(f'banner: new {n_new}, kept {n_kept}, missing {len(missing)}')
+    for s in missing[:20]:
+        print(f"  no banner: {s['genre']} / {s['title']} / {s['artist']}")
+
 if __name__ == '__main__':
+    out_path = 'popn_music_list.json'
+    if '--attach-banners' in sys.argv:
+        # 既存の曲リストに、tools/fetch_banners.py で取得したバナーの特徴量を足す (曲の追加・削除はしない)
+        with open(out_path, 'r', encoding='utf-8') as f:
+            songs = json.load(f)
+        report_banners(*attach_banners(songs, songs, 'tmp_banners'))
+        write_music_list(songs, out_path)
+        sys.exit(0)
+
     songs, n_new, n_old, n_lively_only = build_music_list(
         'tmp_scrape/shinkyoku.html',
         'tmp_scrape/kyukyoku.html',
@@ -338,7 +430,6 @@ if __name__ == '__main__':
     )
     print(f'Done! New: {n_new}, Old: {n_old}, Lively-only: {n_lively_only}, Total: {len(songs)}')
 
-    out_path = 'popn_music_list.json'
     existing = []
     if os.path.exists(out_path):
         with open(out_path, 'r', encoding='utf-8') as f:
@@ -348,6 +439,6 @@ if __name__ == '__main__':
     for e in unused:
         print(f"  dropped: {e['title']} / {e['artist']} ({e['music_id']})")
 
-    with open(out_path, 'w', encoding='utf-8', newline='\n') as f:
-        json.dump(songs, f, ensure_ascii=False, indent=2)
-    print(f'Wrote {len(songs)} songs to {out_path} ({os.path.getsize(out_path)} bytes)')
+    # バナーの特徴量は既存の曲リストから引き継ぐ。新しい曲の分は --attach-banners で足す
+    report_banners(*attach_banners(songs, existing, 'tmp_banners'))
+    write_music_list(songs, out_path)

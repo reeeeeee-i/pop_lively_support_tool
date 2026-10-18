@@ -126,6 +126,7 @@ build_exe_options = {
         "src.screen_reader",
         "src.result_reader",
         "src.song_reader",
+        "src.banner_reader",
         "src.digit_templates",
         "src.judge_reader",
         "src.judge_templates",

@@ -27,9 +27,11 @@ DEFAULT_MUSIC_LIST_URL = (
     "https://raw.githubusercontent.com/reeeeeee-i/pop_lively_support_tool/main/popn_music_list.json"
 )
 MUSIC_LIST_NAME = "popn_music_list.json"   # 署名に記録するファイル名 (取得先の名前とは無関係に固定)
-_MAX_BYTES = 20 * 1024 * 1024   # 曲リストは約 0.7MB。想定外に大きいものは取り込まない
+_MAX_BYTES = 20 * 1024 * 1024   # 曲リストは約 1.2MB。想定外に大きいものは取り込まない
 _MAX_SONGS = 20000
 _TEXT_LIMITS = {"title": 300, "genre": 300, "artist": 600, "ver": 100, "bpm": 50, "pack": 200}
+_BANNER_LIMIT = 1024   # バナーの特徴量 (base64 の文字列。約 260 文字)
+_BASE64 = re.compile(r"[A-Za-z0-9+/]*={0,2}")
 _LEVEL_COLUMNS = ("easy", "normal", "hyper", "ex")
 _LEVEL_RANGE = (1, 60)
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
@@ -64,6 +66,14 @@ def _clean_text(value, field: str, index: int) -> str:
     return value
 
 
+def _clean_banner(value, index: int) -> str:
+    if value is None or value == "":
+        return ""
+    if not isinstance(value, str) or len(value) > _BANNER_LIMIT or not _BASE64.fullmatch(value):
+        raise MusicListFetchError(f"{index + 1} 件目: banner の形式が正しくありません")
+    return value
+
+
 def _clean_level(value, field: str, index: int):
     if value is None or value == "":
         return None
@@ -93,6 +103,7 @@ def validate_music_items(items, require_ids: bool = False) -> list[dict]:
             raise MusicListFetchError(f"{i + 1} 件目: 曲名がありません")
         for column in _LEVEL_COLUMNS:
             song[column] = _clean_level(item.get(column), column, i)
+        song["banner"] = _clean_banner(item.get("banner"), i)
         music_id = item.get("music_id") or item.get("uuid")
         if music_id:
             try:
