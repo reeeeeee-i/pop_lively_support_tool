@@ -216,6 +216,10 @@ class MainWindow(QMainWindow):
         act_export_csv.triggered.connect(self._export_csv)
         score_menu.addAction(act_export_csv)
 
+        act_import_csv = QAction(self.ui.menu.import_csv, self)
+        act_import_csv.triggered.connect(self._import_csv)
+        score_menu.addAction(act_import_csv)
+
         act_open_csv = QAction(self.ui.menu.open_csv, self)
         act_open_csv.triggered.connect(self.score_manager.open_csv)
         score_menu.addAction(act_open_csv)
@@ -744,6 +748,10 @@ class MainWindow(QMainWindow):
         from src.score_dialog import ScoreHistoryDialog
         dlg = ScoreHistoryDialog(self.score_manager, self, config=self.config)
         dlg.exec()
+
+    def _import_csv(self):
+        from src.score_dialog import import_csv_with_dialog
+        import_csv_with_dialog(self, self.score_manager)
 
     def _export_csv(self):
         from src.score_dialog import export_csv_with_dialog
