@@ -46,3 +46,6 @@ Desktop.ini
 # ゲーム画面のキャプチャ
 screenshots/
 result_screenshots/
+
+# 曲リスト生成用に Wiki から取得した HTML
+tmp_scrape/
