@@ -29,6 +29,7 @@ _KEYS = (
     "language",
     "keep_on_top",
     "lively_single_cpu",
+    "last_song_display",
     "log_max_size_mb",
     "score_csv_path",
     "score_db_path",
@@ -45,6 +46,7 @@ CAPTURE_METHODS = ("direct_window", "direct_window_legacy", "obs_websocket")
 FALLBACK_SECONDS_RANGE = (1, 300)
 SCREENSHOT_CONDITIONS =("all", "best", "fullcombo", "perfect")
 SCREENSHOT_FORMATS = ("png", "jpeg")
+LAST_SONG_DISPLAYS = ("title", "genre", "genre_title")
 JPEG_QUALITY_RANGE = (10, 100)
 # 設定ファイルの "window" 以下のキー → Config の属性名
 _WINDOW_KEYS = {
@@ -92,6 +94,8 @@ class Config:
         self.main_window_height: int = 340
         self.lively_single_cpu: bool = False
         """Lively の CPU 割り当てを 1 コアに絞る（ロード時間短縮）"""
+        self.last_song_display: str = "title"
+        """メインウィンドウの「最後にプレイした曲」の表記。'title'=曲名 / 'genre'=ジャンル名 / 'genre_title'=ジャンル名(曲名)"""
         self.log_max_size_mb: int = DEFAULT_LOG_MAX_SIZE_MB
         """ログフォルダ全体の最大容量 (MB)。超えた分は古いログから削除する"""
 
@@ -154,6 +158,8 @@ class Config:
                 )
             elif not isinstance(self.result_screenshot_conditions, list):
                 self.result_screenshot_conditions = []
+            if self.last_song_display not in LAST_SONG_DISPLAYS:
+                self.last_song_display = "title"
             if self.result_screenshot_format not in SCREENSHOT_FORMATS:
                 self.result_screenshot_format = "png"
             try:

@@ -30,10 +30,22 @@ def difficulty_code(difficulty: str) -> str:
     return _DIFFICULTY_CODES.get(d, d)
 
 
-def format_song(title: str, difficulty: str = "") -> str:
-    """「曲名 [難易度区分コード]」形式の表示用文字列"""
+def format_song(title: str, difficulty: str = "", genre: str = "", style: str = "title") -> str:
+    """「曲名 [難易度区分コード]」形式の表示用文字列。
+
+    style: 'title'=曲名 / 'genre'=ジャンル名 / 'genre_title'=ジャンル名(曲名)。
+    ジャンル名が不明なときは曲名で代用する。
+    """
+    if not genre:
+        name = title
+    elif style == "genre":
+        name = genre
+    elif style == "genre_title":
+        name = f"{genre}({title})"
+    else:
+        name = title
     code = difficulty_code(difficulty)
-    return f"{title} [{code}]" if code else title
+    return f"{name} [{code}]" if code else name
 
 
 @dataclass
