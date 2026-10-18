@@ -168,12 +168,12 @@ class MainWindow(QMainWindow):
 
         # 自動更新 (確認はメニュー、または設定で有効なら起動の少しあと)
         from src.update_dialog import UpdateController
-        self.updater = UpdateController(self, self.close)
+        self.updater = UpdateController(self, self.close, self.config)
 
         self._setup_ui()
         self._setup_obs()
-        if self.config.check_update_on_startup:
-            QTimer.singleShot(5000, lambda: self.updater.check(silent=True))
+        if self.config.update_check_mode != "off":
+            QTimer.singleShot(5000, lambda: self.updater.check(silent=True, startup=True))
 
         # メインループ
         self._timer = QTimer(self)

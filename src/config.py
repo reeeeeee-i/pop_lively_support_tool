@@ -39,7 +39,9 @@ _KEYS = (
     "diagnostics_enabled",
     "music_list_url",
     "music_list_serial",
-    "check_update_on_startup",
+    "update_check_mode",
+    "update_skip_until_next",
+    "update_notified_tag",
     "result_screenshot_conditions",
     "result_screenshot_dir",
     "result_screenshot_format",
@@ -51,6 +53,7 @@ CAPTURE_METHODS = ("direct_window", "direct_window_legacy", "obs_websocket")
 FALLBACK_SECONDS_RANGE = (1, 300)
 SCREENSHOT_CONDITIONS =("all", "best", "fullcombo", "perfect")
 SCREENSHOT_FORMATS = ("png", "jpeg")
+UPDATE_CHECK_MODES = ("auto", "notify", "off")
 LAST_SONG_DISPLAYS = ("title", "genre", "genre_title")
 JPEG_QUALITY_RANGE = (10, 100)
 # 設定ファイルの "window" 以下のキー → Config の属性名
@@ -118,8 +121,13 @@ class Config:
         """これまでに取り込んだ曲リストの署名の通し番号。これより古い曲リストは取り込まない (巻き戻し防止)"""
 
         # 自動更新
-        self.check_update_on_startup: bool = False
-        """起動時に、GitHub で新しいバージョンを確認する (既定は無効。メニューからはいつでも確認できる)"""
+        self.update_check_mode: str = "off"
+        """起動時の更新チェック。'auto'=新しい版を自動で適用 / 'notify'=更新内容を確認して適用は任意 / 'off'=チェックしない
+        (どれでも、メニューからはいつでも確認できる)"""
+        self.update_skip_until_next: bool = False
+        """'notify' のとき、一度知らせた版は、次の版が出るまで起動時に知らせない"""
+        self.update_notified_tag: str = ""
+        """起動時に最後に知らせた版のタグ (update_skip_until_next 用)"""
 
         # 曲リストの取得先
         self.music_list_url: str = DEFAULT_MUSIC_LIST_URL
@@ -178,6 +186,14 @@ class Config:
                 )
             elif not isinstance(self.result_screenshot_conditions, list):
                 self.result_screenshot_conditions = []
+            if "update_check_mode" not in d and d.get("check_update_on_startup") is True:
+                # 旧設定 check_update_on_startup (起動時に確認) → 'notify'
+                self.update_check_mode = "notify"
+            if self.update_check_mode not in UPDATE_CHECK_MODES:
+                self.update_check_mode = "off"
+            self.update_skip_until_next = self.update_skip_until_next is True
+            if not isinstance(self.update_notified_tag, str):
+                self.update_notified_tag = ""
             if isinstance(self.music_list_serial, bool) or not isinstance(self.music_list_serial, int):
                 self.music_list_serial = 0
             if not isinstance(self.music_list_url, str) or not self.music_list_url.strip():

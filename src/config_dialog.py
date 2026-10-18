@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from src.config import CAPTURE_METHODS, Config, LAST_SONG_DISPLAYS, FALLBACK_SECONDS_RANGE, JPEG_QUALITY_RANGE
+from src.config import CAPTURE_METHODS, Config, UPDATE_CHECK_MODES, LAST_SONG_DISPLAYS, FALLBACK_SECONDS_RANGE, JPEG_QUALITY_RANGE
 from src.funcs import load_ui_text
 from src.logger import LOG_MAX_SIZE_MB_RANGE
 from src.music_list_fetch import DEFAULT_MUSIC_LIST_URL
@@ -169,9 +169,25 @@ class ConfigDialog(QDialog):
         # 更新
         update_group = QGroupBox(self.ui.feature.update_group)
         update_form = QFormLayout(update_group)
-        self._chk_check_update = QCheckBox(self.ui.feature.check_update_on_startup)
-        self._chk_check_update.setToolTip(self.ui.feature.check_update_on_startup_tip)
-        update_form.addRow(self._chk_check_update)
+        self._cmb_update_mode = QComboBox()
+        update_mode_names = {
+            "auto":   self.ui.feature.update_check_auto,
+            "notify": self.ui.feature.update_check_notify,
+            "off":    self.ui.feature.update_check_off,
+        }
+        for key in UPDATE_CHECK_MODES:
+            self._cmb_update_mode.addItem(update_mode_names[key], key)
+        self._cmb_update_mode.setToolTip(self.ui.feature.update_check_mode_tip)
+        self._cmb_update_mode.currentIndexChanged.connect(self._update_skip_enabled)
+        lbl_update_mode = QLabel(self.ui.feature.update_check_mode)
+        lbl_update_mode.setToolTip(self.ui.feature.update_check_mode_tip)
+        update_row = QHBoxLayout()
+        update_row.addWidget(self._cmb_update_mode)
+        update_row.addStretch()
+        update_form.addRow(lbl_update_mode, update_row)
+        self._chk_update_skip = QCheckBox(self.ui.feature.update_skip_until_next)
+        self._chk_update_skip.setToolTip(self.ui.feature.update_skip_until_next_tip)
+        update_form.addRow(self._chk_update_skip)
         self._edit_music_list_url = QLineEdit()
         self._edit_music_list_url.setToolTip(self.ui.feature.music_list_url_tip)
         lbl_music_url = QLabel(self.ui.feature.music_list_url)
@@ -297,6 +313,10 @@ class ConfigDialog(QDialog):
             self._chk_shot_conds["perfect"].setChecked(True)
         self._update_shot_conds_enabled()
 
+    def _update_skip_enabled(self):
+        """「次の更新まで通知しない」は、更新内容を確認するモードのときだけ使える。"""
+        self._chk_update_skip.setEnabled(self._cmb_update_mode.currentData() == "notify")
+
     def _update_shot_conds_enabled(self):
         conds = self._chk_shot_conds
         every = conds["all"].isChecked()
@@ -375,7 +395,10 @@ class ConfigDialog(QDialog):
         self._cmb_last_song.setCurrentIndex(max(0, self._cmb_last_song.findData(self.config.last_song_display)))
         self._spin_log_size.setValue(self.config.log_max_size_mb)
         self._edit_music_list_url.setText(self.config.music_list_url)
-        self._chk_check_update.setChecked(self.config.check_update_on_startup)
+        idx = self._cmb_update_mode.findData(self.config.update_check_mode)
+        self._cmb_update_mode.setCurrentIndex(max(idx, 0))
+        self._chk_update_skip.setChecked(self.config.update_skip_until_next)
+        self._update_skip_enabled()
         self._chk_skip_retire.setChecked(self.config.score_skip_retire)
         self._chk_diagnostics.setChecked(self.config.diagnostics_enabled)
         # 「毎回」は他の条件を上書きするので、他の条件を反映してから最後に設定する
@@ -408,7 +431,8 @@ class ConfigDialog(QDialog):
         self.config.lively_single_cpu           = self._chk_single_cpu.isChecked()
         self.config.last_song_display           = self._cmb_last_song.currentData()
         self.config.log_max_size_mb             = self._spin_log_size.value()
-        self.config.check_update_on_startup     = self._chk_check_update.isChecked()
+        self.config.update_check_mode           = self._cmb_update_mode.currentData()
+        self.config.update_skip_until_next      = self._chk_update_skip.isChecked()
         self.config.music_list_url              = self._edit_music_list_url.text().strip() or DEFAULT_MUSIC_LIST_URL
         self.config.score_skip_retire           = self._chk_skip_retire.isChecked()
         self.config.diagnostics_enabled         = self._chk_diagnostics.isChecked()
