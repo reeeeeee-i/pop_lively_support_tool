@@ -18,6 +18,8 @@ class UIText:
         score_history = "スコア履歴 / CSV表示(&H)..."
         export_csv    = "CSVファイルを出力(&E)..."
         open_csv      = "CSVファイルを開く(&O)"
+        stats         = "統計(&T)..."
+        session_summary = "セッションサマリー(&M)..."
 
     class status:
         waiting_game     = "ゲーム画面を待機中..."
@@ -121,6 +123,7 @@ class UIText:
         uptime         = "起動時間"
         today_notes    = "本日の打鍵数"
         last_song      = "最後にプレイした曲"
+        chart_info     = "この譜面の成績"
         reset_notes    = "本日の打鍵数をリセット"
         screenshot_tip = "現在の画面のスクリーンショットを保存"
         open_screenshot_dir = "スクリーンショットのフォルダを開く"

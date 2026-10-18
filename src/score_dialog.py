@@ -9,6 +9,7 @@ from typing import Callable, NamedTuple
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -33,6 +34,11 @@ from src.classes import DIFFICULTY_LEVEL_COLUMNS, PopnOptions, PopnScoreRecord
 from src.config import Config
 from src.option_master import OPTION_KEYS as _OPTION_KEYS
 from src.score_manager import ScoreManager
+from src.score_stats import (
+    CLEAR_ALL, CLEAR_FULL_COMBO, CLEAR_NOT_FULL_COMBO, CLEAR_PERFECT,
+    PERIOD_30DAYS, PERIOD_7DAYS, PERIOD_ALL, PERIOD_MONTH, PERIOD_TODAY,
+    RecordFilter,
+)
 
 
 _VER_PREFIX = "pop'n music"
@@ -113,6 +119,23 @@ _COLUMN_LABELS = {c.key: c.label for c in _COLUMNS}
 _JUDGE_KEYS = ["score", "cool", "great", "good", "bad", "combo"]
 _SCORE_MAX = 100000
 _DIFFICULTY_CODES = list(DIFFICULTY_LEVEL_COLUMNS)
+
+# 絞り込みの選択肢 (表示名, 値)
+_FILTER_DIFFICULTIES = (("すべて", ""), ("L", "L"), ("N", "N"), ("H", "H"), ("EX", "EX"))
+_FILTER_CLEARS = (
+    ("すべて", CLEAR_ALL),
+    ("FULL COMBO", CLEAR_FULL_COMBO),
+    ("PERFECT", CLEAR_PERFECT),
+    ("FULL COMBO 以外", CLEAR_NOT_FULL_COMBO),
+)
+_FILTER_PERIODS = (
+    ("全期間", PERIOD_ALL),
+    ("今日", PERIOD_TODAY),
+    ("直近7日", PERIOD_7DAYS),
+    ("直近30日", PERIOD_30DAYS),
+    ("今月", PERIOD_MONTH),
+)
+_LEVEL_MAX = 50
 
 _MUSIC_COLUMNS = [
     ("title", "曲名", 240),
@@ -511,6 +534,8 @@ class ScoreHistoryDialog(QDialog):
         self.config = config
         self._row_texts: list[list[str]] = []
         """行ごとの検索用文字列 (列順は _COLUMNS)"""
+        self._allowed_rows: set[int] = set()
+        """絞り込み条件 (RecordFilter) を満たす行"""
 
         self.setWindowTitle("スコア履歴 / CSV出力")
         self.setMinimumSize(950, 500)
@@ -564,6 +589,28 @@ class ScoreHistoryDialog(QDialog):
         shortcut.activated.connect(self._edit_search.selectAll)
         layout.addLayout(top_hbox)
 
+        # 絞り込み条件 (難易度・レベル・クリア種別・期間・ベストのみ)
+        filter_hbox = QHBoxLayout()
+        self._cmb_difficulty = self._make_filter_combo(_FILTER_DIFFICULTIES)
+        self._spin_level_min = self._make_level_spin()
+        self._spin_level_max = self._make_level_spin()
+        self._cmb_clear = self._make_filter_combo(_FILTER_CLEARS)
+        self._cmb_period = self._make_filter_combo(_FILTER_PERIODS)
+        self._chk_best_only = QCheckBox("各譜面のベストのみ")
+        self._chk_best_only.setToolTip("譜面ごとに最高スコアの記録だけを表示します。")
+        self._chk_best_only.toggled.connect(self._on_filter_changed)
+        btn_clear_filter = QPushButton("条件をクリア")
+        btn_clear_filter.clicked.connect(self._clear_filters)
+        for widget in (
+            QLabel("難易度:"), self._cmb_difficulty,
+            QLabel("レベル:"), self._spin_level_min, QLabel("～"), self._spin_level_max,
+            QLabel("クリア:"), self._cmb_clear, QLabel("期間:"), self._cmb_period,
+            self._chk_best_only, btn_clear_filter,
+        ):
+            filter_hbox.addWidget(widget)
+        filter_hbox.addStretch()
+        layout.addLayout(filter_hbox)
+
         # テーブル
         self._table = QTableWidget()
         self._table.setColumnCount(len(_COLUMNS))
@@ -592,6 +639,58 @@ class ScoreHistoryDialog(QDialog):
         btn_close.clicked.connect(self.accept)
         bottom_hbox.addWidget(btn_close)
         layout.addLayout(bottom_hbox)
+
+    # ------------------------------------------------------------------
+    # 絞り込み条件
+    # ------------------------------------------------------------------
+
+    def _make_filter_combo(self, choices) -> QComboBox:
+        combo = QComboBox()
+        for label, value in choices:
+            combo.addItem(label, value)
+        combo.currentIndexChanged.connect(self._on_filter_changed)
+        return combo
+
+    def _make_level_spin(self) -> QSpinBox:
+        spin = QSpinBox()
+        spin.setRange(0, _LEVEL_MAX)
+        spin.setSpecialValueText("指定なし")
+        spin.valueChanged.connect(self._on_filter_changed)
+        return spin
+
+    def _record_filter(self) -> RecordFilter:
+        return RecordFilter(
+            difficulty=self._cmb_difficulty.currentData(),
+            level_min=self._spin_level_min.value() or None,
+            level_max=self._spin_level_max.value() or None,
+            clear=self._cmb_clear.currentData(),
+            period=self._cmb_period.currentData(),
+            best_only=self._chk_best_only.isChecked(),
+        )
+
+    def _on_filter_changed(self, *_):
+        self._update_allowed_rows()
+        self._filter()
+
+    def _update_allowed_rows(self):
+        """絞り込み条件を満たす行を求める。"""
+        # 新しい順に並べた self._rows ではなく古い順の履歴で「ベスト」を決める (同点は古い方)
+        allowed = {id(r) for r in self._record_filter().apply(list(reversed(self._rows)))}
+        self._allowed_rows = {i for i, r in enumerate(self._rows) if id(r) in allowed}
+
+    def _clear_filters(self):
+        for widget in (self._cmb_difficulty, self._cmb_clear, self._cmb_period):
+            widget.blockSignals(True)
+            widget.setCurrentIndex(0)
+            widget.blockSignals(False)
+        for spin in (self._spin_level_min, self._spin_level_max):
+            spin.blockSignals(True)
+            spin.setValue(0)
+            spin.blockSignals(False)
+        self._chk_best_only.blockSignals(True)
+        self._chk_best_only.setChecked(False)
+        self._chk_best_only.blockSignals(False)
+        self._on_filter_changed()
 
     # ------------------------------------------------------------------
     # 列設定 (並び順 / 表示・非表示 / 幅)
@@ -692,6 +791,7 @@ class ScoreHistoryDialog(QDialog):
                         Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
                     )
                 self._table.setItem(row_idx, col_idx, item)
+        self._update_allowed_rows()
         self._filter()
 
     def _filter(self, _text: str = ""):
@@ -702,11 +802,11 @@ class ScoreHistoryDialog(QDialog):
         shown = 0
         for row_idx, texts in enumerate(self._row_texts):
             key = "\n".join(texts[i] for i in visible)
-            match = all(w in key for w in words)
+            match = row_idx in self._allowed_rows and all(w in key for w in words)
             self._table.setRowHidden(row_idx, not match)
             shown += match
         total = len(self._row_texts)
-        count = f"{total} 件中 {shown} 件を表示" if words else f"{total} 件"
+        count = f"{total} 件中 {shown} 件を表示" if words or shown != total else f"{total} 件"
         self._lbl_count.setText(
             f"記録件数: {count} (DB: {self.score_manager.db_path} / CSV: {self.score_manager.csv_path})"
         )
@@ -744,10 +844,17 @@ class ScoreHistoryDialog(QDialog):
         act_edit = menu.addAction("編集...")
         act_shot = menu.addAction("スクリーンショットを開く")
         act_shot.setEnabled(bool(self._rows[row].screenshot_file))
+        act_trend = menu.addAction("この譜面のスコア推移を表示...")
         act_delete = menu.addAction("削除")
         chosen = menu.exec(self._table.viewport().mapToGlobal(pos))
         if chosen is act_edit:
             self._open_detail(row)
+        elif chosen is act_trend:
+            from src.stats_dialog import StatsDialog
+            record = self._rows[row]
+            StatsDialog(
+                self.score_manager, self, initial_chart=(record.music_id, record.difficulty_code)
+            ).exec()
         elif chosen is act_shot:
             open_screenshot(self, self._rows[row], self.config)
         elif chosen is act_delete:

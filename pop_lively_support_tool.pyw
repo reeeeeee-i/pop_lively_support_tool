@@ -31,6 +31,7 @@ from src.screen_reader import ScreenReader
 from src.option_reader import GUIDE_SE_ON
 from src.obs_websocket_manager import OBSWebSocketManager
 from src.score_manager import ScoreManager
+from src.score_stats import append_session_log, summarize_session
 from src.funcs import load_ui_text
 from src.logger import get_logger
 
@@ -121,6 +122,7 @@ class MainWindow(QMainWindow):
 
         # 起動時刻
         self._start_time = time.time()
+        self._session_start = datetime.now().replace(microsecond=0)
 
         # 最後にプレイした曲
         # (曲名, ジャンル名, 難易度区分) または None。表記は設定に従って組み立てる
@@ -220,6 +222,16 @@ class MainWindow(QMainWindow):
         act_open_csv.triggered.connect(self.score_manager.open_csv)
         score_menu.addAction(act_open_csv)
 
+        score_menu.addSeparator()
+
+        act_stats = QAction(self.ui.menu.stats, self)
+        act_stats.triggered.connect(self._open_stats)
+        score_menu.addAction(act_stats)
+
+        act_session = QAction(self.ui.menu.session_summary, self)
+        act_session.triggered.connect(self._open_session_summary)
+        score_menu.addAction(act_session)
+
         # 中央ウィジェット
         central = QWidget()
         self.setCentralWidget(central)
@@ -278,6 +290,12 @@ class MainWindow(QMainWindow):
         info_form.addRow(make_row_label(self.ui.main_display.uptime),       self.lbl_uptime)
         info_form.addRow(make_row_label(self.ui.main_display.today_notes),  self.lbl_today_notes)
         info_form.addRow(make_row_label(self.ui.main_display.last_song),    self.lbl_last_song)
+
+        self.lbl_chart_info = QLabel("")
+        self.lbl_chart_info.setFont(font_lbl)
+        self.lbl_chart_info.setStyleSheet("color: #80d8ff; font-weight: bold;")
+        self.lbl_chart_info.setWordWrap(True)
+        info_form.addRow(make_row_label(self.ui.main_display.chart_info), self.lbl_chart_info)
 
         layout.addWidget(info_group)
 
@@ -410,6 +428,7 @@ class MainWindow(QMainWindow):
             self._title_scanned = False
             self._title_frames = 0
             self.score_manager.reset_current_song()
+            self.lbl_chart_info.setText("")
             # 判定内訳はここではリセットしない。プレー画面の検出が一瞬途切れただけの場合に
             # 数え直しにならないよう、累計値が 0 に戻ったことを見て曲の切り替わりを判断する
         elif mode == DetectMode.result:
@@ -483,6 +502,8 @@ class MainWindow(QMainWindow):
             self._set_last_played_song(
                 self.score_manager.current_song_title, song.difficulty, self.score_manager.current_genre
             )
+            self.lbl_chart_info.setStyleSheet("color: #80d8ff; font-weight: bold;")
+            self.lbl_chart_info.setText(self.score_manager.describe_current_chart())
         elif self._title_frames >= _TITLE_SCAN_INTERVAL_FRAMES * _TITLE_SCAN_MAX_TRIES:
             self._title_scanned = True
             logger.warning("曲を特定できませんでした (読み取り結果: '%s' / %s)", song.text, song.difficulty)
@@ -551,6 +572,7 @@ class MainWindow(QMainWindow):
                 chart_info = f"[Lv{record.level} {record.difficulty_code}] " if record.level else f"[{record.difficulty_code}] "
                 msg = f"スコア保存: {chart_info}{record.title} | {record.score}点 ({record.options.to_summary()})"
                 self._statusbar.showMessage(msg, 6000)
+                self._show_comparison()
                 self._save_result_screenshot(image, record, values)
 
             # 最後にプレイした曲の表示を更新
@@ -560,6 +582,15 @@ class MainWindow(QMainWindow):
                 self._set_last_played_song(song_title, record.difficulty, genre)
         except Exception as e:
             logger.error("スコア保存処理エラー: %s", e)
+
+    def _show_comparison(self):
+        """今回のスコアと、それまでのベストとの比較をメインウィンドウに表示する。"""
+        comparison = self.score_manager.last_comparison
+        if comparison is None:
+            return
+        color = "#ffd600" if comparison.is_new_best else "#80d8ff"
+        self.lbl_chart_info.setStyleSheet(f"color: {color}; font-weight: bold;")
+        self.lbl_chart_info.setText(comparison.text())
 
     def _open_screenshot_dir(self):
         """スクリーンショットの保存先フォルダをエクスプローラーで開く。"""
@@ -745,6 +776,25 @@ class MainWindow(QMainWindow):
         dlg = ScoreHistoryDialog(self.score_manager, self, config=self.config)
         dlg.exec()
 
+    def _open_stats(self):
+        from src.stats_dialog import StatsDialog
+        StatsDialog(self.score_manager, self).exec()
+
+    def _open_session_summary(self):
+        from src.stats_dialog import SessionSummaryDialog
+        SessionSummaryDialog(self.score_manager, self._session_start, self).exec()
+
+    def _save_session_log(self):
+        """終了時に、このセッションの成績を CSV に 1 行追記する (プレーが無ければ何もしない)。"""
+        try:
+            summary = summarize_session(self.score_manager.records, self._session_start)
+            if summary.plays == 0:
+                return
+            folder = os.path.dirname(os.path.abspath(self.config.score_csv_path))
+            append_session_log(os.path.join(folder, "popn_session_log.csv"), summary)
+        except Exception:
+            logger.error(traceback.format_exc())
+
     def _export_csv(self):
         from src.score_dialog import export_csv_with_dialog
         export_csv_with_dialog(self, self.score_manager)
@@ -756,6 +806,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self._timer.stop()
         self._affinity_timer.stop()
+        self._save_session_log()
         # ウィンドウ位置・サイズを保存
         geo = self.geometry()
         self.config.main_window_x      = geo.x()

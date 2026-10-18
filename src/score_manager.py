@@ -5,9 +5,10 @@ import os
 import time
 from datetime import datetime
 
-from src.classes import PopnOptions, PopnScoreRecord
+from src.classes import PopnOptions, PopnScoreRecord, difficulty_code
 from src.db import PopnDatabase
 from src.logger import get_logger
+from src.score_stats import ScoreComparison, compare_with_best, describe_chart, summarize_chart
 
 logger = get_logger(__name__)
 
@@ -34,6 +35,8 @@ class ScoreManager:
         self.current_level: int | str = ""
         self.current_difficulty: str = ""
         self._last_saved_time: float = 0.0
+        self.last_comparison: ScoreComparison | None = None
+        """直近に保存したスコアと、それまでのベストとの比較 (曲を特定できていなければ None)"""
 
         # 曲リスト JSON を曲テーブルに反映 (music_id で上書き更新)。
         # 未登録曲の自動登録で曲テーブルが空でなくなっていても、JSON の曲が欠けないよう毎回行う
@@ -96,6 +99,13 @@ class ScoreManager:
         """指定日（デフォルトは本日）の記録から総打鍵数を計算する"""
         return self.db.get_today_notes(date_str or datetime.now().strftime("%Y-%m-%d"))
 
+    def describe_current_chart(self) -> str:
+        """現在のプレー曲のこれまでの成績 (ベスト・前回・プレー回数)。曲を特定できていなければ空文字。"""
+        if not self.current_music_id:
+            return ""
+        code = difficulty_code(self.current_difficulty)
+        return describe_chart(summarize_chart(self.records, self.current_music_id, code))
+
     def get_last_played_song(self) -> tuple[str, str, str] | None:
         """最後にプレイした曲の (曲名, ジャンル名, 難易度区分) を取得する（最新レコード）"""
         if not self.records:
@@ -130,6 +140,9 @@ class ScoreManager:
             record.options = self.current_options
         # オプション値をマスターの表記に揃える
         self.db.normalize_options(record.options)
+
+        # 今回の記録を足す前の履歴で、その譜面のベストと比べる
+        self.last_comparison = compare_with_best(self.records, record)
 
         # SQLite データベースへ保存 (曲情報は除き、UUID で曲テーブルと結合)
         record_id = self.db.save_score(record)
