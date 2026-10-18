@@ -2,7 +2,7 @@ name: 曲リストの自動更新
 
 on:
   schedule:
-    - cron: "0 0 * * 0"   # 毎週日曜 9:00 (日本時間)。GitHub の cron は UTC
+    - cron: "0 0 * * 5"   # 毎週金曜 9:00 (日本時間)。GitHub の cron は UTC
   workflow_dispatch:       # 手動実行
 
 permissions:
