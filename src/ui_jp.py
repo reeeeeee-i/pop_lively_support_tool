@@ -17,6 +17,7 @@ class UIText:
         score         = "スコア(&S)"
         score_history = "スコア履歴 / CSV表示(&H)..."
         export_csv    = "CSVファイルを出力(&E)..."
+        import_csv    = "CSVファイルから取り込み(&I)..."
         open_csv      = "CSVファイルを開く(&O)"
 
     class status:

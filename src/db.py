@@ -13,7 +13,13 @@ import sqlite3
 import unicodedata
 import uuid
 
-from src.classes import DIFFICULTY_LEVEL_COLUMNS, PopnOptions, PopnScoreRecord, difficulty_code
+from src.classes import (
+    DIFFICULTY_LEVEL_COLUMNS,
+    PopnOptions,
+    PopnScoreRecord,
+    difficulty_code,
+    unescape_formula,
+)
 from src.logger import get_logger
 from src.option_master import (
     OPTION_DEFAULTS,
@@ -39,6 +45,9 @@ CSV_HEADERS = [
     "COMBO",
     *(OPTION_LABELS[key] for key in OPTION_KEYS),
     "プレー日時",
+    "music_id",
+    "修正済",
+    "スクリーンショット",
 ]
 
 # scores テーブルに保存する列 (id / modified 以外)。INSERT の列順
@@ -49,6 +58,12 @@ _SCORE_COLUMNS = (
 _INSERT_SCORE_SQL = (
     f"INSERT INTO scores ({', '.join(_SCORE_COLUMNS)})"
     f" VALUES ({', '.join('?' * len(_SCORE_COLUMNS))});"
+)
+# CSV インポートで保存する列 (_SCORE_COLUMNS + 修正済フラグ・スクリーンショット)
+_IMPORT_COLUMNS = (*_SCORE_COLUMNS, "modified", "screenshot_file")
+_IMPORT_SCORE_SQL = (
+    f"INSERT INTO scores ({', '.join(_IMPORT_COLUMNS)})"
+    f" VALUES ({', '.join('?' * len(_IMPORT_COLUMNS))});"
 )
 # 修正時に上書きする列 (プレー日時は変えない)
 _UPDATE_COLUMNS = _SCORE_COLUMNS[:-1]
@@ -100,8 +115,11 @@ _CSV_DEFAULTS = {
     "level": "",
     "title": "Unknown",
     "difficulty": "",
-    "options_summary": "NORMAL",
+    "options_summary": "",   # 空欄は個別オプションから作る
     "played_at": "",
+    "music_id": "",
+    "modified": "",
+    "screenshot_file": "",
     **OPTION_DEFAULTS,
 }
 # 列名付き CSV: 項目 → 列名の候補 (先頭が現行の列名、以降は旧形式の列名)
@@ -117,6 +135,9 @@ _CSV_COLUMN_NAMES = {
     "combo": ("COMBO",),
     "options_summary": ("使用オプション",),
     "played_at": ("プレー日時",),
+    "music_id": ("music_id",),
+    "modified": ("修正済",),
+    "screenshot_file": ("スクリーンショット",),
     **{key: (OPTION_LABELS[key],) for key in OPTION_KEYS},
     "hispeed": (OPTION_LABELS["hispeed"], "Hi-speed"),
     "popkun": (OPTION_LABELS["popkun"], "ポップ君"),
@@ -174,6 +195,14 @@ def _parse_csv_row(row: list[str], named_layout: dict[str, int] | None) -> dict 
         else:
             return None
 
+    # 列名付きの形式で曲名・SCORE の列に届かない短い行、曲名が空の行は壊れた行として扱う
+    if named_layout is not None:
+        for field in ("title", "score"):
+            if field in layout and layout[field] >= len(row):
+                return None
+        if "title" in layout and not row[layout["title"]].strip():
+            return None
+
     fields = {**_CSV_DEFAULTS, **overrides}
     for field, idx in layout.items():
         if idx < len(row) and row[idx] != "":
@@ -181,8 +210,13 @@ def _parse_csv_row(row: list[str], named_layout: dict[str, int] | None) -> dict 
     for field in _CSV_INT_FIELDS:
         value = fields.get(field, "")
         fields[field] = int(value) if value.isdigit() else 0
+    fields["title"] = unescape_formula(fields["title"])
+    fields["modified"] = 1 if fields["modified"].strip() in ("1", "True", "true") else 0
     if fields["hispeed"] == "OFF":
         fields["hispeed"] = "1.0"   # 旧形式は等速を OFF と記録していた
+    if not fields["options_summary"]:
+        options = PopnOptions(**{key: fields[key] for key in OPTION_KEYS})
+        fields["options_summary"] = options.to_summary()
     return fields
 
 
@@ -766,11 +800,18 @@ class PopnDatabase:
         """scores と musics を結合して CSV ファイルを出力する"""
         records = self.load_scores()
         try:
-            with open(csv_path, "w", encoding="utf-8-sig", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow(CSV_HEADERS)
-                for r in records:
-                    writer.writerow(r.to_csv_row())
+            # 一時ファイルに書いてから置き換える (途中で失敗しても既存ファイルを壊さない)
+            tmp_path = f"{csv_path}.tmp"
+            try:
+                with open(tmp_path, "w", encoding="utf-8-sig", newline="") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(CSV_HEADERS)
+                    for r in records:
+                        writer.writerow(r.to_csv_row())
+                os.replace(tmp_path, csv_path)
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
             logger.info("CSV エクスポート完了: %s (%d 件)", csv_path, len(records))
             return len(records)
         except Exception as e:
@@ -778,52 +819,76 @@ class PopnDatabase:
             raise
 
     def import_csv(self, csv_path: str = "popn_score.csv") -> int:
-        """既存の CSV ファイルから scores テーブルへインポートする。
+        """既存の CSV ファイルから scores テーブルへインポートし、取り込んだ件数を返す。
 
         列名付きの形式 (現行・旧) と、列名の無い旧形式 (_CSV_LEGACY_LAYOUTS) に対応する。
-        プレー日時とスコアが同じ記録は取り込み済みとみなしてスキップする。
+        文字コードは UTF-8 (BOM 有無とも) か Shift_JIS (CP932)。
+        music_id 列があり曲テーブルに存在すればそれを優先し、無ければ曲名で解決する。
+        曲・プレー日時・スコアが同じ記録は取り込み済みとみなしてスキップする。
+        ファイルが無い場合は 0 を返し、読み込めない場合は例外を送出する。
         """
         if not os.path.exists(csv_path):
             return 0
 
         try:
-            with open(csv_path, "r", encoding="utf-8-sig") as f:
-                reader = csv.reader(f)
-                header = next(reader, None)
-                if not header:
-                    return 0
-                named_layout = _csv_named_layout(header)
+            with open(csv_path, "rb") as f:
+                raw = f.read()
+            try:
+                text = raw.decode("utf-8-sig")
+            except UnicodeDecodeError:
+                text = raw.decode("cp932")
 
-                with self._conn:
-                    cursor = self._conn.execute("SELECT played_at, score FROM scores")
-                    existing_scores = {(r["played_at"], r["score"]) for r in cursor.fetchall()}
+            reader = csv.reader(text.splitlines())
+            header = next(reader, None)
+            if not header:
+                return 0
+            named_layout = _csv_named_layout(header)
 
-                rows_to_save = []
-                for row in reader:
-                    if not row:
+            with self._conn:
+                existing_scores = {
+                    (r["music_id"], r["played_at"], r["score"])
+                    for r in self._conn.execute("SELECT music_id, played_at, score FROM scores")
+                }
+                known_music_ids = {
+                    r["music_id"] for r in self._conn.execute("SELECT music_id FROM musics")
+                }
+
+            rows_to_save = []
+            skipped = 0
+            for line_no, row in enumerate(reader, start=2):
+                if not row:
+                    continue
+                try:
+                    fields = _parse_csv_row(row, named_layout)
+                    if fields is None:
+                        skipped += 1
+                        logger.warning("CSV %d 行目: 列数が足りないためスキップしました", line_no)
                         continue
-                    try:
-                        fields = _parse_csv_row(row, named_layout)
-                        if fields is None:
-                            continue
-                        key = (fields["played_at"], fields["score"])
-                        if key in existing_scores:
-                            continue
-                        existing_scores.add(key)
 
-                        # 曲テーブルから UUID を検索（level は検索の絞り込みにのみ使用）
+                    # CSV の UUID が曲テーブルにあればそれを使い、無ければ曲名から検索
+                    # （level は検索の絞り込みにのみ使用）
+                    if fields["music_id"] not in known_music_ids:
                         fields["music_id"] = self.find_music_id(
                             fields["title"], fields["difficulty"], fields["level"]
                         )
-                        rows_to_save.append(tuple(fields[column] for column in _SCORE_COLUMNS))
-                    except Exception as e:
-                        logger.debug("CSV 行インポートスキップ: %s", e)
+
+                    key = (fields["music_id"], fields["played_at"], fields["score"])
+                    if key in existing_scores:
+                        continue
+                    existing_scores.add(key)
+                    rows_to_save.append(tuple(fields[column] for column in _IMPORT_COLUMNS))
+                except Exception as e:
+                    skipped += 1
+                    logger.warning("CSV %d 行目をスキップしました: %s", line_no, e)
 
             if rows_to_save:
                 with self._conn:
-                    self._conn.executemany(_INSERT_SCORE_SQL, rows_to_save)
-                logger.info("CSV から %d 件のスコアをインポートしました", len(rows_to_save))
+                    self._conn.executemany(_IMPORT_SCORE_SQL, rows_to_save)
+            logger.info(
+                "CSV から %d 件のスコアをインポートしました (エラーでスキップ: %d 件)",
+                len(rows_to_save), skipped,
+            )
             return len(rows_to_save)
         except Exception as e:
-            logger.error("CSV インポートエラー: %s", e)
-            return 0
+            logger.error("CSV インポートエラー (%s): %s", csv_path, e)
+            raise
