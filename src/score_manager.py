@@ -95,6 +95,25 @@ class ScoreManager:
         self.set_current_chart(music["level"], difficulty)
         return True
 
+    def identify_banner(self, feature) -> str:
+        """オプション画面から読んだバナーの特徴量から曲を特定し、music_id を返す。特定できなければ空文字。"""
+        found = self.db.match_banner(feature)
+        if found is None:
+            return ""
+        logger.info("バナー照合: %s (相関 %.3f / 2 位との差 %.3f)", found["music_id"], found["score"], found["margin"])
+        return found["music_id"]
+
+    def identify_music(self, music_id: str, difficulty: str = "") -> bool:
+        """music_id (バナー照合で特定した曲) と難易度区分から、現在の曲を設定する。曲が見つからなければ False。"""
+        music = self.db.music_with_level(music_id, difficulty)
+        if music is None:
+            return False
+        self.current_music_id = music["music_id"]
+        self.set_current_song_title(music["title"])
+        self.current_genre = music.get("genre") or ""
+        self.set_current_chart(music["level"], difficulty)
+        return True
+
     def reset_current_song(self) -> None:
         """次の曲に前曲の情報が誤適用されないよう曲名・レベル・難易度を初期化"""
         self.current_music_id = ""

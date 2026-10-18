@@ -4,8 +4,8 @@
   "key_id": "1b082662baf04d60",
   "kind": "music-list",
   "name": "popn_music_list.json",
-  "version": "3",
-  "sha256": "2692fdb401607b9802907b3905177e7160f975486390c59b823547ed34f93ede",
-  "size": 680633,
-  "signature": "1960d31bac78bc42ac52d1d59c0aca6cb53a4323b7844961a8c006f1af18d0698a009f688ccc7387ae7a135e26114c52d743271536fcaf0495614a7d45f62200"
+  "version": "5",
+  "sha256": "5b5310cabcd864b5b1c41391d4b8d41797f9c12ffbf7282a306c9b7b6b57220f",
+  "size": 1206165,
+  "signature": "874aec099c5057a4bc22ac37dd7f0f601f7be5947da2973b7bcc64bf618c781fe6b3683c0257dbce06d4caa9dc018ccce98b8de1c0e9d616f03aa4c30fbfef0f"
 }

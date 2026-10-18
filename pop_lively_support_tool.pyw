@@ -52,6 +52,10 @@ _TITLE_SCAN_MAX_TRIES = 20
 _OPTION_SCAN_INTERVAL_FRAMES = 3
 # オプション読み取り: 同じ値がこの回数続いたら反映する（画面の開閉演出の途中を掴まないため）
 _OPTION_STABLE_READS = 2
+# バナー照合: 同じ曲がこの回数続いたら採用する
+_BANNER_STABLE_READS = 2
+# リザルト画面のバナー照合: このフレーム数ごとに 1 回読む
+_RESULT_BANNER_INTERVAL_FRAMES = 2
 # GUIDE SE の ON の値。アイコンからは大/小が分からないので、先頭 (ゲームの初期値) を既定とする
 _GUIDE_SE_ON_VALUES = ("ON 大", "ON 小")
 
@@ -146,6 +150,12 @@ class MainWindow(QMainWindow):
         self._option_values = None   # 直近に読めたオプション一覧
         self._option_stable = 0
         self._option_frames = 0
+        self._banner_music_id = ""    # オプション画面のバナーから特定した曲 (特定できなければ空)
+        self._banner_candidate = ""
+        self._banner_stable = 0
+        self._result_banner_id = ""   # リザルト画面のバナーから特定した曲 (特定できなければ空)
+        self._result_banner_candidate = ""
+        self._result_banner_stable = 0
 
         # リザルト読み取り待ち状態
         self._result_pending = False
@@ -465,6 +475,8 @@ class MainWindow(QMainWindow):
             self._option_values = None
             self._option_stable = 0
             self._option_frames = 0
+            self._banner_music_id = self._banner_candidate = ""
+            self._banner_stable = 0
         elif mode == DetectMode.play:
             self._title_scanned = False
             self._title_frames = 0
@@ -483,6 +495,8 @@ class MainWindow(QMainWindow):
             self._result_image = None
             self._result_retire = False
             self._result_new_record = False
+            self._result_banner_id = self._result_banner_candidate = ""
+            self._result_banner_stable = 0
 
     def _leave_mode(self, mode: DetectMode):
         if mode == DetectMode.result:
@@ -497,6 +511,10 @@ class MainWindow(QMainWindow):
         if (self._option_frames - 1) % _OPTION_SCAN_INTERVAL_FRAMES != 0:
             return
 
+        if not self._banner_music_id:
+            self._banner_candidate, self._banner_stable, self._banner_music_id = self._track_banner(
+                image, self._banner_candidate, self._banner_stable
+            )
         values = self.screen_reader.read_options(image)
         if not values:
             self._option_values = None
@@ -516,6 +534,22 @@ class MainWindow(QMainWindow):
             values = {**values, "guide_se": guide_se if guide_se in _GUIDE_SE_ON_VALUES else _GUIDE_SE_ON_VALUES[0]}
         if any(current.get(k) != v for k, v in values.items()):
             self.score_manager.set_current_options(PopnOptions.from_dict({**current, **values}))
+
+    def _read_banner_id(self, image) -> str:
+        """画面のバナーから曲を特定して music_id を返す。特定できなければ空文字。"""
+        feature = self.screen_reader.read_banner(image)
+        return self.score_manager.identify_banner(feature) if feature is not None else ""
+
+    def _track_banner(self, image, candidate: str, stable: int) -> tuple[str, int, str]:
+        """バナーを 1 回読み、同じ曲が続けて読めたら採用する。(候補, 連続回数, 採用した曲 (未採用なら空)) を返す。
+
+        オプション画面ではプレー画面での曲の特定に、リザルト画面ではスコアの記録に使う。
+        """
+        music_id = self._read_banner_id(image)
+        if not music_id:
+            return "", 0, ""
+        stable = stable + 1 if music_id == candidate else 1
+        return music_id, stable, music_id if stable >= _BANNER_STABLE_READS else ""
 
     def _process_play(self, image):
         self._last_play_image = image
@@ -541,7 +575,11 @@ class MainWindow(QMainWindow):
             return
 
         song = self.screen_reader.read_play_song(image)
-        if song.text and self.score_manager.identify_song(song.text, song.difficulty):
+        if self._banner_music_id and self.score_manager.identify_music(self._banner_music_id, song.difficulty):
+            identified = True   # オプション画面のバナーで特定済み (曲名 OCR より確実)
+        else:
+            identified = bool(song.text) and self.score_manager.identify_song(song.text, song.difficulty)
+        if identified:
             self._title_scanned = True
             self._set_last_played_song(
                 self.score_manager.current_song_title, song.difficulty, self.score_manager.current_genre
@@ -613,6 +651,10 @@ class MainWindow(QMainWindow):
     def _process_result(self, image):
         """リザルト画面の数値を読み、数フレーム連続で同じ値になったら記録する。"""
         self._result_frames += 1
+        if not self._result_banner_id and (self._result_frames - 1) % _RESULT_BANNER_INTERVAL_FRAMES == 0:
+            self._result_banner_candidate, self._result_banner_stable, self._result_banner_id = self._track_banner(
+                image, self._result_banner_candidate, self._result_banner_stable
+            )
         values = self.screen_reader.read_result_values(image)
         # 「Retire」の表示が数値より遅れて出ても拾えるよう、一度でも検出したら覚えておく
         if values is not None and values.retire:
@@ -640,10 +682,25 @@ class MainWindow(QMainWindow):
             else:
                 self._save_result(image, values)
 
+    def _identify_song_from_result_banner(self, image):
+        """リザルト画面のバナーで曲を確定する。プレー画面で曲を特定できなかった場合や、読み誤っていた場合も直る。"""
+        music_id = self._result_banner_id or self._read_banner_id(image)
+        sm = self.score_manager
+        if not music_id or music_id == sm.current_music_id:
+            return
+        if not sm.identify_music(music_id, sm.current_difficulty):
+            return
+        logger.info("リザルトのバナーで曲を確定しました: %s", sm.current_song_title)
+        self._set_last_played_song(sm.current_song_title, sm.current_difficulty, sm.current_genre)
+        self.btn_pick_song.hide()
+        self.lbl_chart_info.setStyleSheet("color: #80d8ff; font-weight: bold;")
+        self.lbl_chart_info.setText(sm.describe_current_chart())
+
     def _save_result(self, image, values):
         """リザルト画面の読み取り結果をスコア履歴に記録する。"""
         self._result_pending = False
         try:
+            self._identify_song_from_result_banner(image)
             self._diagnose_result(image, values)
             record = self.screen_reader.read_result(
                 image,

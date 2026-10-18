@@ -14,6 +14,7 @@ import unicodedata
 import uuid
 from datetime import datetime
 
+from src.banner_reader import BannerIndex, decode_feature
 from src.classes import (
     DIFFICULTY_LEVEL_COLUMNS,
     PopnOptions,
@@ -261,6 +262,7 @@ class PopnDatabase:
         self._match_index: dict[str, list[dict]] | None = None  # match_music 用の曲名キー索引
         self._music_by_id: dict[str, dict] | None = None  # match_music 用の music_id 索引
         self._aliases: dict[str, str] | None = None  # OCR 文字列の照合キー → music_id (学習した読み替え)
+        self._banner_index: BannerIndex | None = None  # オプション画面のバナー照合用の索引
         self._option_values: dict[str, list[str]] | None = None  # オプションマスターのキャッシュ
         self._connect()
         self.init_tables()
@@ -296,7 +298,7 @@ class PopnDatabase:
             self._init_option_masters()
             self._init_aliases()
         self._option_values = None
-        self._match_index = self._music_by_id = self._aliases = None
+        self._match_index = self._music_by_id = self._aliases = self._banner_index = None
 
     def _init_musics(self) -> None:
         self._conn.execute(
@@ -312,10 +314,15 @@ class PopnDatabase:
                 normal INTEGER,
                 hyper INTEGER,
                 ex INTEGER,
-                pack TEXT DEFAULT ''
+                pack TEXT DEFAULT '',
+                banner TEXT DEFAULT ''
             );
             """
         )
+        columns = {row["name"] for row in self._conn.execute("PRAGMA table_info(musics)")}
+        if "banner" not in columns:
+            # バナー画像の特徴量 (src/banner_reader.py)。公式サイトのバナーから曲リストの生成時に作る
+            self._conn.execute("ALTER TABLE musics ADD COLUMN banner TEXT DEFAULT ''")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_musics_title ON musics (title);")
 
     def _score_column_names(self) -> set[str]:
@@ -473,6 +480,7 @@ class PopnDatabase:
             artist = str(item.get("artist", "")).strip()
             bpm = str(item.get("bpm", "")).strip()
             pack = str(item.get("pack", "")).strip()
+            banner = str(item.get("banner", "")).strip()
 
             key = (title, genre, ver, artist)
             item_uuid = item.get("music_id") or item.get("uuid")
@@ -496,6 +504,7 @@ class PopnDatabase:
                     bpm,
                     *(_to_level(item.get(column)) for column in ("easy", "normal", "hyper", "ex")),
                     pack,
+                    banner,
                 )
             )
 
@@ -503,8 +512,8 @@ class PopnDatabase:
             self._conn.executemany(
                 """
                 INSERT INTO musics (
-                    music_id, title, genre, artist, ver, bpm, easy, normal, hyper, ex, pack
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    music_id, title, genre, artist, ver, bpm, easy, normal, hyper, ex, pack, banner
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(music_id) DO UPDATE SET
                     title = excluded.title,
                     genre = excluded.genre,
@@ -515,7 +524,8 @@ class PopnDatabase:
                     normal = excluded.normal,
                     hyper = excluded.hyper,
                     ex = excluded.ex,
-                    pack = excluded.pack;
+                    pack = excluded.pack,
+                    banner = CASE WHEN excluded.banner != '' THEN excluded.banner ELSE musics.banner END;
                 """,
                 records_to_insert,
             )
@@ -528,7 +538,7 @@ class PopnDatabase:
             except Exception as e:
                 logger.error("JSON UUID 保存エラー: %s", e)
 
-        self._match_index = self._music_by_id = None
+        self._match_index = self._music_by_id = self._banner_index = None
         logger.info("曲テーブルに %d 件の曲をインポートしました", len(records_to_insert))
         return len(records_to_insert)
 
@@ -619,6 +629,36 @@ class PopnDatabase:
         if len(candidates) > 1:
             logger.info("曲名照合: '%s' は同名曲が %d 件あります", music["title"], len(candidates))
         return {**music, "level": music[column] if column and music[column] is not None else ""}
+
+    def music_with_level(self, music_id: str, difficulty: str = "") -> dict | None:
+        """music_id から曲テーブルの曲を返す。戻り値は match_music と同じ形式 (level は difficulty の譜面のレベル)。"""
+        music = self._get_music_by_id().get(music_id)
+        if music is None:
+            return None
+        column = DIFFICULTY_LEVEL_COLUMNS.get(difficulty_code(difficulty))
+        return {**music, "level": music[column] if column and music[column] is not None else ""}
+
+    def match_banner(self, feature) -> dict | None:
+        """オプション画面から読んだバナーの特徴量に最も近い曲を返す (確信が持てなければ None)。
+
+        戻り値は {"music_id": ..., "score": 相関, "margin": 2 位との差}。
+        """
+        if self._banner_index is None:
+            with self._conn:
+                rows = self._conn.execute(
+                    "SELECT music_id, banner FROM musics WHERE banner != ''"
+                ).fetchall()
+            items = []
+            for r in rows:
+                v = decode_feature(r["banner"])
+                if v is not None:
+                    items.append((r["music_id"], v))
+            self._banner_index = BannerIndex(items)
+        found = self._banner_index.match(feature)
+        if found is None:
+            return None
+        music_id, score, margin = found
+        return {"music_id": music_id, "score": score, "margin": margin}
 
     def _get_match_index(self) -> dict[str, list[dict]]:
         """曲名の照合キー → 曲 (同名曲は複数) の索引"""
