@@ -51,6 +51,13 @@ class UIText:
         obs_disconnected = "OBS 未接続"
 
     class feature:
+        tab_general                     = "一般"
+        tab_record                      = "記録・保存"
+        tab_capture                     = "キャプチャ"
+        view_group                      = "表示"
+        behavior_group                  = "動作"
+        log_group                       = "ログ"
+        update_group                    = "更新"
         game_capture_group              = "ゲーム画面取得"
         capture_method_direct           = "直接取得 (DXCAM)"
         capture_method_direct_legacy    = "直接取得 (旧方式)"
@@ -65,7 +72,6 @@ class UIText:
         capture_fallback_seconds_tip    = "この秒数フレームを取得できなかったら、次の方式に切り替えます。"
         direct_capture_all_monitors     = "常に全モニターを対象にする"
         direct_capture_all_monitors_tip = "旧直接取得で使います。"
-        other_group                     = "その他"
         keep_on_top                     = "常に最前面表示する"
         last_song_display               = "最後にプレイした曲の表記"
         last_song_display_title         = "曲名"
@@ -101,7 +107,6 @@ class UIText:
             "メニュー → データ → 曲リストをURLから更新 で取得する popn_music_list.json の URL です (https のみ)。\n"
             "空欄にすると、既定の URL (このツールのリポジトリの main ブランチ) に戻ります。"
         )
-        diagnostics_group               = "認識診断"
         diagnostics_enabled             = "読み取りに失敗した画面を診断データとして保存する"
         diagnostics_enabled_tip         = (
             "曲を特定できなかったプレー画面、読み取りに不確かな点があったリザルト画面、判定内訳がリザルトと\n"

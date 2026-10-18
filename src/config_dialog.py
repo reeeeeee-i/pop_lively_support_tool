@@ -58,7 +58,9 @@ class ConfigDialog(QDialog):
         tabs = QTabWidget()
         layout.addWidget(tabs)
 
-        tabs.addTab(self._build_feature_tab(), "キャプチャ設定")
+        tabs.addTab(self._build_general_tab(), self.ui.feature.tab_general)
+        tabs.addTab(self._build_record_tab(), self.ui.feature.tab_record)
+        tabs.addTab(self._build_capture_tab(), self.ui.feature.tab_capture)
         tabs.addTab(self._build_obs_tab(), "OBS WebSocket")
 
         bbox = QDialogButtonBox(
@@ -69,7 +71,7 @@ class ConfigDialog(QDialog):
         bbox.rejected.connect(self.reject)
         layout.addWidget(bbox)
 
-    def _build_feature_tab(self) -> QWidget:
+    def _build_capture_tab(self) -> QWidget:
         tab = QWidget()
         layout = QVBoxLayout(tab)
 
@@ -112,11 +114,18 @@ class ConfigDialog(QDialog):
         cap_vbox.addWidget(self._chk_all_monitors)
         layout.addWidget(cap_group)
 
-        # その他
-        other_group = QGroupBox(self.ui.feature.other_group)
-        other_form = QFormLayout(other_group)
+        layout.addStretch()
+        return tab
+
+    def _build_general_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        # 表示
+        view_group = QGroupBox(self.ui.feature.view_group)
+        view_form = QFormLayout(view_group)
         self._chk_keep_on_top = QCheckBox(self.ui.feature.keep_on_top)
-        other_form.addRow(self._chk_keep_on_top)
+        view_form.addRow(self._chk_keep_on_top)
         self._cmb_last_song = QComboBox()
         last_song_names = {
             "title":       self.ui.feature.last_song_display_title,
@@ -128,10 +137,23 @@ class ConfigDialog(QDialog):
         last_song_row = QHBoxLayout()
         last_song_row.addWidget(self._cmb_last_song)
         last_song_row.addStretch()
-        other_form.addRow(QLabel(self.ui.feature.last_song_display), last_song_row)
+        view_form.addRow(QLabel(self.ui.feature.last_song_display), last_song_row)
+        layout.addWidget(view_group)
+
+        # 動作
+        behavior_group = QGroupBox(self.ui.feature.behavior_group)
+        behavior_vbox = QVBoxLayout(behavior_group)
         self._chk_single_cpu = QCheckBox(self.ui.feature.lively_single_cpu)
         self._chk_single_cpu.setToolTip(self.ui.feature.lively_single_cpu_tip)
-        other_form.addRow(self._chk_single_cpu)
+        behavior_vbox.addWidget(self._chk_single_cpu)
+        self._chk_diagnostics = QCheckBox(self.ui.feature.diagnostics_enabled)
+        self._chk_diagnostics.setToolTip(self.ui.feature.diagnostics_enabled_tip)
+        behavior_vbox.addWidget(self._chk_diagnostics)
+        layout.addWidget(behavior_group)
+
+        # ログ
+        log_group = QGroupBox(self.ui.feature.log_group)
+        log_form = QFormLayout(log_group)
         self._spin_log_size = QSpinBox()
         self._spin_log_size.setRange(*LOG_MAX_SIZE_MB_RANGE)
         self._spin_log_size.setSuffix(" MB")
@@ -141,7 +163,12 @@ class ConfigDialog(QDialog):
         log_row = QHBoxLayout()
         log_row.addWidget(self._spin_log_size)
         log_row.addStretch()
-        other_form.addRow(lbl_log_size, log_row)
+        log_form.addRow(lbl_log_size, log_row)
+        layout.addWidget(log_group)
+
+        # 更新
+        update_group = QGroupBox(self.ui.feature.update_group)
+        update_form = QFormLayout(update_group)
         self._cmb_update_mode = QComboBox()
         update_mode_names = {
             "auto":   self.ui.feature.update_check_auto,
@@ -157,16 +184,23 @@ class ConfigDialog(QDialog):
         update_row = QHBoxLayout()
         update_row.addWidget(self._cmb_update_mode)
         update_row.addStretch()
-        other_form.addRow(lbl_update_mode, update_row)
+        update_form.addRow(lbl_update_mode, update_row)
         self._chk_update_skip = QCheckBox(self.ui.feature.update_skip_until_next)
         self._chk_update_skip.setToolTip(self.ui.feature.update_skip_until_next_tip)
-        other_form.addRow(self._chk_update_skip)
+        update_form.addRow(self._chk_update_skip)
         self._edit_music_list_url = QLineEdit()
         self._edit_music_list_url.setToolTip(self.ui.feature.music_list_url_tip)
         lbl_music_url = QLabel(self.ui.feature.music_list_url)
         lbl_music_url.setToolTip(self.ui.feature.music_list_url_tip)
-        other_form.addRow(lbl_music_url, self._edit_music_list_url)
-        layout.addWidget(other_group)
+        update_form.addRow(lbl_music_url, self._edit_music_list_url)
+        layout.addWidget(update_group)
+
+        layout.addStretch()
+        return tab
+
+    def _build_record_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
 
         # スコア保存時の条件
         save_group = QGroupBox(self.ui.feature.score_save_group)
@@ -175,14 +209,6 @@ class ConfigDialog(QDialog):
         self._chk_skip_retire.setToolTip(self.ui.feature.score_skip_retire_tip)
         save_vbox.addWidget(self._chk_skip_retire)
         layout.addWidget(save_group)
-
-        # 認識診断
-        diag_group = QGroupBox(self.ui.feature.diagnostics_group)
-        diag_vbox = QVBoxLayout(diag_group)
-        self._chk_diagnostics = QCheckBox(self.ui.feature.diagnostics_enabled)
-        self._chk_diagnostics.setToolTip(self.ui.feature.diagnostics_enabled_tip)
-        diag_vbox.addWidget(self._chk_diagnostics)
-        layout.addWidget(diag_group)
 
         # リザルトのスクリーンショット
         shot_group = QGroupBox(self.ui.feature.screenshot_group)
