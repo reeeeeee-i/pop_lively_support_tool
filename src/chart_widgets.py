@@ -99,7 +99,13 @@ class _ChartBase(QWidget):
         painter.setPen(self._text_color())
         painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self._empty_text)
 
+    def _is_empty(self) -> bool:
+        return not self._labels
+
     def mouseMoveEvent(self, event):
+        if self._is_empty():
+            QToolTip.hideText()
+            return
         index = self._index_at(event.position().x())
         if index is not None and index < len(self._tips):
             QToolTip.showText(event.globalPosition().toPoint(), self._tips[index], self)
@@ -122,6 +128,9 @@ class BarChartWidget(_ChartBase):
         super().__init__(parent)
         self._values: list[float] = []
         self._color = QColor("#ffb74d")
+
+    def _is_empty(self) -> bool:
+        return not self._values or max(self._values) <= 0
 
     def set_data(self, labels: list[str], values: list[float], tips: list[str], color: str = "#ffb74d"):
         self._labels, self._values, self._tips = labels, values, tips
@@ -160,6 +169,9 @@ class LineChartWidget(_ChartBase):
         super().__init__(parent)
         self._values: list[float] = []
         self._highlight: list[bool] = []
+
+    def _is_empty(self) -> bool:
+        return not self._values
 
     def set_data(self, labels: list[str], values: list[float], tips: list[str], highlight: list[bool]):
         self._labels, self._values, self._tips, self._highlight = labels, values, tips, highlight
@@ -209,6 +221,9 @@ class JudgeBarWidget(_ChartBase):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._rows: list[tuple[int, int, int, int]] = []
+
+    def _is_empty(self) -> bool:
+        return not self._rows
 
     def set_data(self, labels: list[str], rows: list[tuple[int, int, int, int]], tips: list[str]):
         self._labels, self._rows, self._tips = labels, rows, tips
