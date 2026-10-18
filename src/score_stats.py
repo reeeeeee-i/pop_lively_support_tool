@@ -470,3 +470,26 @@ class RecordFilter:
                 continue
             result.append(r)
         return result
+
+
+# ----------------------------------------------------------------------
+# 共有用テキスト
+# ----------------------------------------------------------------------
+
+def format_share_text(s: SessionSummary) -> str:
+    """X などに投稿するための短いテキスト"""
+    lines = [
+        "pop'n music Lively のセッション結果",
+        f"プレー {s.plays} 回 / 打鍵数 {s.notes:,}",
+    ]
+    if s.plays:
+        lines.append(f"自己ベスト更新 {len(s.best_updates)} 件 / FULL COMBO {s.full_combos} 回")
+    lines.append("#popn")
+    return "\n".join(lines)
+
+
+def records_with_screenshots(records: list[PopnScoreRecord], since: datetime) -> list[PopnScoreRecord]:
+    """since 以降にプレーし、リザルトのスクリーンショットを保存した記録 (古い順)"""
+    since_text = since.strftime(_TIME_FORMAT)
+    result = [r for r in records if r.screenshot_file and r.timestamp >= since_text]
+    return sorted(result, key=lambda r: r.timestamp)

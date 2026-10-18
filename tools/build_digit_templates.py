@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src import result_reader as rr  # noqa: E402
+from tools.diag_samples import diag_samples  # noqa: E402
 
 # (画像パス, 各行に表示されている文字列)
 SAMPLES = [
@@ -48,6 +49,10 @@ SAMPLES = [
      {"score": "93876", "cool": "1283", "great": "293", "good": "9", "bad": "4",
       "combo": "675"}),
 ]
+
+
+# アプリの「認識診断」で正解値を確定したデータも使う (tools/diag_samples.py)。best / diff は対象外
+SAMPLES += diag_samples("result", to_text=True)
 
 
 def load_image(path: str) -> Image.Image:

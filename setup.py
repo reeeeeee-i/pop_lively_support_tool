@@ -63,6 +63,9 @@ if os.path.exists("popn_music_list.json"):
 if os.path.exists("README.md"):
     include_files.append(("README.md", "README.md"))
 
+# アプリのバージョンは pyproject.toml の version を正とし、実行時に読む (src/app_version.py)
+include_files.append(("pyproject.toml", "pyproject.toml"))
+
 if os.path.exists("LICENSE"):
     include_files.append(("LICENSE", "LICENSE"))
 
@@ -130,6 +133,15 @@ build_exe_options = {
         "src.score_manager",
         "src.score_dialog",
         "src.ui_jp",
+        "src.app_version",
+        "src.updater",
+        "src.signing",
+        "src.ed25519",
+        "src.trusted_keys",
+        "src.secure_http",
+        "src.music_list_fetch",
+        "src.update_dialog",
+        "tomllib",
         "ctypes",
         "ctypes.wintypes",
         "ctypes.util",

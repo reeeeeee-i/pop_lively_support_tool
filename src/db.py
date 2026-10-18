@@ -12,6 +12,7 @@ import os
 import sqlite3
 import unicodedata
 import uuid
+from datetime import datetime
 
 from src.classes import DIFFICULTY_LEVEL_COLUMNS, PopnOptions, PopnScoreRecord, difficulty_code
 from src.logger import get_logger
@@ -86,6 +87,7 @@ _SCORES_ADDED_COLUMNS = (
     ("ojama1_zutto", "TEXT DEFAULT 'OFF'"),
     ("ojama2_zutto", "TEXT DEFAULT 'OFF'"),
     ("screenshot_file", "TEXT DEFAULT ''"),  # リザルトのスクリーンショットのファイル名 (無ければ空)
+    ("ocr_title", "TEXT DEFAULT ''"),  # プレー画面から OCR で読んだ曲名 (未照合)
 )
 
 _MUSIC_COLUMNS = "music_id, title, genre, artist, ver, easy, normal, hyper, ex"
@@ -223,6 +225,8 @@ class PopnDatabase:
         self.db_path = db_path
         self._conn: sqlite3.Connection | None = None
         self._match_index: dict[str, list[dict]] | None = None  # match_music 用の曲名キー索引
+        self._music_by_id: dict[str, dict] | None = None  # match_music 用の music_id 索引
+        self._aliases: dict[str, str] | None = None  # OCR 文字列の照合キー → music_id (学習した読み替え)
         self._option_values: dict[str, list[str]] | None = None  # オプションマスターのキャッシュ
         self._connect()
         self.init_tables()
@@ -256,7 +260,9 @@ class PopnDatabase:
             self._init_musics()
             self._init_scores()
             self._init_option_masters()
+            self._init_aliases()
         self._option_values = None
+        self._match_index = self._music_by_id = self._aliases = None
 
     def _init_musics(self) -> None:
         self._conn.execute(
@@ -320,6 +326,17 @@ class PopnDatabase:
         self._conn.execute("DROP TABLE scores;")
         self._conn.execute("ALTER TABLE scores_new RENAME TO scores;")
         logger.info("スコアテーブルのマイグレーション完了")
+
+    def _init_aliases(self) -> None:
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS song_aliases (
+                alias_key TEXT PRIMARY KEY,
+                music_id TEXT NOT NULL,
+                created_at TEXT DEFAULT ''
+            );
+            """
+        )
 
     def _init_option_masters(self) -> None:
         # 選択肢の定義元は src/option_master.py。起動のたびに定義どおりに入れ直す
@@ -477,7 +494,7 @@ class PopnDatabase:
             except Exception as e:
                 logger.error("JSON UUID 保存エラー: %s", e)
 
-        self._match_index = None
+        self._match_index = self._music_by_id = None
         logger.info("曲テーブルに %d 件の曲をインポートしました", len(records_to_insert))
         return len(records_to_insert)
 
@@ -547,7 +564,12 @@ class PopnDatabase:
             return None
 
         index = self._get_match_index()
-        candidates = index.get(key)
+        candidates = None
+        learned = self._get_music_by_id().get(self._get_aliases().get(key, ""))
+        if learned is not None:
+            candidates = [learned]   # 手動で直した曲名の読み替えを最優先する
+        if not candidates:
+            candidates = index.get(key)
         if not candidates:
             best_key = self._closest_match_key(key, text)
             if best_key is None:
@@ -575,7 +597,36 @@ class PopnDatabase:
             for r in rows:
                 index.setdefault(_match_key(r["title"]), []).append(dict(r))
             self._match_index = index
+            self._music_by_id = {m["music_id"]: m for group in index.values() for m in group}
         return self._match_index
+
+    def _get_music_by_id(self) -> dict[str, dict]:
+        self._get_match_index()
+        return self._music_by_id
+
+    def _get_aliases(self) -> dict[str, str]:
+        if self._aliases is None:
+            with self._conn:
+                rows = self._conn.execute("SELECT alias_key, music_id FROM song_aliases").fetchall()
+            self._aliases = {r["alias_key"]: r["music_id"] for r in rows}
+        return self._aliases
+
+    def add_alias(self, ocr_text: str, music_id: str) -> bool:
+        """OCR で読んだ文字列を、曲 (music_id) の読み替えとして学習する。以後の曲名照合で最優先になる。"""
+        key = _match_key(ocr_text)
+        if not key or not music_id:
+            return False
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO song_aliases (alias_key, music_id, created_at) VALUES (?, ?, ?);",
+                (key, music_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+            )
+        self._aliases = None
+        logger.info("曲名の読み替えを学習: '%s' → %s", ocr_text, music_id)
+        return True
+
+    def alias_count(self) -> int:
+        return len(self._get_aliases())
 
     def _closest_match_key(self, key: str, text: str) -> str | None:
         """索引の中で key に最も似た照合キーを返す。確信が持てなければ None。"""
@@ -660,6 +711,47 @@ class PopnDatabase:
                 "UPDATE scores SET screenshot_file = ? WHERE id = ?;", (filename, record_id)
             )
 
+    def set_music(self, record_id: int, music_id: str, difficulty: str = "") -> None:
+        """スコア記録の曲 (と、指定すれば難易度区分) を付け替える。"""
+        with self._conn:
+            if difficulty:
+                self._conn.execute(
+                    "UPDATE scores SET music_id = ?, difficulty = ? WHERE id = ?;",
+                    (music_id, difficulty, record_id),
+                )
+            else:
+                self._conn.execute("UPDATE scores SET music_id = ? WHERE id = ?;", (music_id, record_id))
+
+    def set_ocr_title(self, record_id: int, text: str) -> None:
+        """スコア記録に、プレー画面から OCR で読んだ曲名を紐づける。"""
+        with self._conn:
+            self._conn.execute("UPDATE scores SET ocr_title = ? WHERE id = ?;", (text, record_id))
+
+    def relink_unknown_scores(self) -> int:
+        """曲を特定できず Unknown で記録されたスコアを、保存済みの OCR 文字列で曲テーブルと照合し直す。
+
+        曲リストの更新や読み替えの学習のあとに呼ぶ。曲を特定できた件数を返す。
+        """
+        with self._conn:
+            rows = self._conn.execute(
+                """
+                SELECT s.id, s.difficulty, s.ocr_title FROM scores s
+                LEFT JOIN musics m ON s.music_id = m.music_id
+                WHERE COALESCE(s.ocr_title, '') != '' AND (m.music_id IS NULL OR m.title = 'Unknown');
+                """
+            ).fetchall()
+        relinked = 0
+        for row in rows:
+            music = self.match_music(row["ocr_title"], row["difficulty"])
+            if music is None:
+                continue
+            with self._conn:
+                self._conn.execute("UPDATE scores SET music_id = ? WHERE id = ?;", (music["music_id"], row["id"]))
+            relinked += 1
+        if relinked:
+            logger.info("Unknown のスコア %d 件の曲を特定しました", relinked)
+        return relinked
+
     def get_music(self, music_id: str) -> dict | None:
         """曲テーブルの 1 曲を返す。未登録なら None。"""
         with self._conn:
@@ -715,7 +807,8 @@ class PopnDatabase:
                     {", ".join(f"s.{key}" for key in OPTION_KEYS)},
                     s.played_at,
                     COALESCE(s.modified, 0) AS modified,
-                    COALESCE(s.screenshot_file, '') AS screenshot_file
+                    COALESCE(s.screenshot_file, '') AS screenshot_file,
+                    COALESCE(s.ocr_title, '') AS ocr_title
                 FROM scores s
                 LEFT JOIN musics m ON s.music_id = m.music_id
                 ORDER BY s.played_at ASC, s.id ASC;
@@ -746,6 +839,7 @@ class PopnDatabase:
                 ver=r["ver"],
                 modified=bool(r["modified"]),
                 screenshot_file=r["screenshot_file"],
+                ocr_title=r["ocr_title"],
             ))
         return records
 
@@ -827,3 +921,40 @@ class PopnDatabase:
         except Exception as e:
             logger.error("CSV インポートエラー: %s", e)
             return 0
+
+    # ------------------------------------------------------------------
+    # バックアップ・復元
+    # ------------------------------------------------------------------
+
+    def backup_to(self, dest_path: str) -> None:
+        """データベース全体 (スコア・曲テーブル・読み替え) を dest_path にコピーする。使用中でも安全に取れる。"""
+        if os.path.exists(dest_path):
+            os.remove(dest_path)
+        dest = sqlite3.connect(dest_path)
+        try:
+            self._conn.backup(dest)
+        finally:
+            dest.close()
+        logger.info("データベースをバックアップしました: %s", dest_path)
+
+    def restore_from(self, src_path: str) -> None:
+        """バックアップのデータベースで、現在のデータベースの中身を置き換える。
+
+        バックアップが scores テーブルを持たない場合は ValueError。古い形式のバックアップは
+        復元後にマイグレーションする。
+        """
+        src = sqlite3.connect(src_path)
+        try:
+            tables = {r[0] for r in src.execute("SELECT name FROM sqlite_master WHERE type = 'table';")}
+            if "scores" not in tables or "musics" not in tables:
+                raise ValueError("pop'n music サポートツールのバックアップではありません")
+            src.backup(self._conn)
+        finally:
+            src.close()
+        self._connect_pragmas()
+        self.init_tables()
+        logger.info("データベースを復元しました: %s", src_path)
+
+    def _connect_pragmas(self) -> None:
+        with self._conn:
+            self._conn.execute("PRAGMA foreign_keys = ON;")

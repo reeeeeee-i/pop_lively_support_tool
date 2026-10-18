@@ -522,6 +522,9 @@ class ScoreDetailDialog(QDialog):
         except Exception as e:
             QMessageBox.critical(self, "エラー", f"スコア記録の修正に失敗しました:\n{e}")
             return
+        if values["music_id"] != r.music_id and r.ocr_title:
+            # 曲を直した記録は、読み取った曲名の読み替えとして学習する (同じ読み取りの Unknown も直る)
+            self.score_manager.learn_alias(r.ocr_title, values["music_id"])
         self.accept()
 
 

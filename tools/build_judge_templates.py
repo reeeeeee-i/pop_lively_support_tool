@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src import judge_reader as jr  # noqa: E402
+from tools.diag_samples import diag_samples  # noqa: E402
 
 # (画像パス, 各判定の累計値)
 SAMPLES = [
@@ -33,6 +34,10 @@ SAMPLES = [
     ("screenshots/play/vlcsnap-2026-10-04-08h59m34s337.png", {"bad": 67, "good": 16, "great": 72, "cool": 201}),
     ("screenshots/play/vlcsnap-2026-10-04-09h07m01s119.png", {"bad": 35, "good": 8, "great": 42, "cool": 87}),
 ]
+
+
+# アプリの「認識診断」で正解値を確定したデータも使う (tools/diag_samples.py)
+SAMPLES += diag_samples("judge")
 
 
 def load_image(path: str) -> Image.Image:

@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMessageBox,
     QMenuBar,
     QPushButton,
     QStatusBar,
@@ -30,6 +31,8 @@ from src.cpu_affinity import LivelyCpuAffinity
 from src.screen_reader import ScreenReader
 from src.option_reader import GUIDE_SE_ON
 from src.obs_websocket_manager import OBSWebSocketManager
+from src.app_version import get_app_version
+from src.diagnostics import KIND_JUDGE, KIND_RESULT, KIND_TITLE, DiagnosticStore
 from src.score_manager import ScoreManager
 from src.score_stats import append_session_log, summarize_session
 from src.funcs import load_ui_text
@@ -122,6 +125,11 @@ class MainWindow(QMainWindow):
 
         # 起動時刻
         self._start_time = time.time()
+
+        # 認識診断 (設定で有効なときだけ保存する)
+        self.diagnostics = DiagnosticStore()
+        self._last_play_image = None   # 直近のプレー画面 (判定内訳の読み取りがリザルトと食い違ったときの診断用)
+        self._unidentified_difficulty = ""
         self._session_start = datetime.now().replace(microsecond=0)
 
         # 最後にプレイした曲
@@ -148,8 +156,14 @@ class MainWindow(QMainWindow):
         self._result_retire = False  # リザルト画面で「Retire」の表示を検出したか
         self._result_new_record = False  # リザルト画面で「NEW RECORD!」の表示を検出したか
 
+        # 自動更新 (確認はメニュー、または設定で有効なら起動の少しあと)
+        from src.update_dialog import UpdateController
+        self.updater = UpdateController(self, self.close)
+
         self._setup_ui()
         self._setup_obs()
+        if self.config.check_update_on_startup:
+            QTimer.singleShot(5000, lambda: self.updater.check(silent=True))
 
         # メインループ
         self._timer = QTimer(self)
@@ -214,16 +228,6 @@ class MainWindow(QMainWindow):
         act_history.triggered.connect(self._open_score_history)
         score_menu.addAction(act_history)
 
-        act_export_csv = QAction(self.ui.menu.export_csv, self)
-        act_export_csv.triggered.connect(self._export_csv)
-        score_menu.addAction(act_export_csv)
-
-        act_open_csv = QAction(self.ui.menu.open_csv, self)
-        act_open_csv.triggered.connect(self.score_manager.open_csv)
-        score_menu.addAction(act_open_csv)
-
-        score_menu.addSeparator()
-
         act_stats = QAction(self.ui.menu.stats, self)
         act_stats.triggered.connect(self._open_stats)
         score_menu.addAction(act_stats)
@@ -231,6 +235,36 @@ class MainWindow(QMainWindow):
         act_session = QAction(self.ui.menu.session_summary, self)
         act_session.triggered.connect(self._open_session_summary)
         score_menu.addAction(act_session)
+
+        # データメニュー
+        data_menu = menubar.addMenu(self.ui.menu.data)
+        for text, handler in (
+            (self.ui.menu.update_music_list_url, self._update_music_list_from_url),
+            (self.ui.menu.update_music_list, self._update_music_list),
+            (self.ui.menu.backup, self._create_backup),
+            (self.ui.menu.restore, self._restore_backup),
+            (None, None),
+            (self.ui.menu.export_csv, self._export_csv),
+            (self.ui.menu.open_csv, self.score_manager.open_csv),
+            (self.ui.menu.import_csv, self._import_csv),
+            (None, None),
+            (self.ui.menu.diagnostics, self._open_diagnostics),
+        ):
+            if text is None:
+                data_menu.addSeparator()
+                continue
+            action = QAction(text, self)
+            action.triggered.connect(handler)
+            data_menu.addAction(action)
+
+        # ヘルプメニュー
+        help_menu = menubar.addMenu(self.ui.menu.help)
+        act_update = QAction(self.ui.menu.check_update, self)
+        act_update.triggered.connect(lambda: self.updater.check(silent=False))
+        help_menu.addAction(act_update)
+        act_about = QAction(self.ui.menu.about, self)
+        act_about.triggered.connect(self._show_about)
+        help_menu.addAction(act_about)
 
         # 中央ウィジェット
         central = QWidget()
@@ -298,6 +332,13 @@ class MainWindow(QMainWindow):
         info_form.addRow(make_row_label(self.ui.main_display.chart_info), self.lbl_chart_info)
 
         layout.addWidget(info_group)
+
+        # 曲を特定できなかったときだけ表示する、曲の手動選択ボタン
+        self.btn_pick_song = QPushButton(self.ui.main_display.pick_song)
+        self.btn_pick_song.setToolTip(self.ui.main_display.pick_song_tip)
+        self.btn_pick_song.clicked.connect(self._pick_song)
+        self.btn_pick_song.hide()
+        layout.addWidget(self.btn_pick_song)
 
         # スクリーンショット行: フォルダを開く + 手動撮影
         self.btn_open_shot_dir = QPushButton(self.ui.main_display.open_screenshot_dir)
@@ -429,6 +470,8 @@ class MainWindow(QMainWindow):
             self._title_frames = 0
             self.score_manager.reset_current_song()
             self.lbl_chart_info.setText("")
+            self.btn_pick_song.hide()
+            self._unidentified_difficulty = ""
             # 判定内訳はここではリセットしない。プレー画面の検出が一瞬途切れただけの場合に
             # 数え直しにならないよう、累計値が 0 に戻ったことを見て曲の切り替わりを判断する
         elif mode == DetectMode.result:
@@ -475,6 +518,7 @@ class MainWindow(QMainWindow):
             self.score_manager.set_current_options(PopnOptions.from_dict({**current, **values}))
 
     def _process_play(self, image):
+        self._last_play_image = image
         # プレー開始直後に曲名・難易度区分を認識
         if not self._title_scanned:
             self._scan_play_song(image)
@@ -508,6 +552,63 @@ class MainWindow(QMainWindow):
             self._title_scanned = True
             logger.warning("曲を特定できませんでした (読み取り結果: '%s' / %s)", song.text, song.difficulty)
             self.screen_reader.save_unread_title(image)
+            self._on_song_unidentified(image, song)
+
+    def _on_song_unidentified(self, image, song):
+        """曲を特定できなかったときの救済 (手動選択ボタンの表示) と診断データの保存。"""
+        self._unidentified_difficulty = song.difficulty
+        if song.difficulty:
+            # 曲は不明でも、難易度区分はアイコンから分かるので記録に使う
+            self.score_manager.set_current_chart("", song.difficulty)
+        self.lbl_chart_info.setStyleSheet("color: #ffab40; font-weight: bold;")
+        self.lbl_chart_info.setText(self.ui.main_display.song_unidentified.format(text=song.text or "-"))
+        self.btn_pick_song.show()
+        if self.config.diagnostics_enabled:
+            self.diagnostics.add(
+                KIND_TITLE, image, {"text": song.text, "difficulty": song.difficulty},
+                note="曲を特定できませんでした",
+            )
+
+    def _pick_song(self):
+        """曲を特定できなかったとき、曲を手動で選ぶ。選んだ曲は読み替えとして学習する。"""
+        from src.score_dialog import MusicSelectDialog
+        dlg = MusicSelectDialog(self.score_manager, "", self)
+        if not (dlg.exec() and dlg.selected):
+            return
+        fixed = self.score_manager.assign_song(dlg.selected, self._unidentified_difficulty)
+        self.btn_pick_song.hide()
+        self._set_last_played_song(
+            self.score_manager.current_song_title, self.score_manager.current_difficulty,
+            self.score_manager.current_genre,
+        )
+        self.lbl_chart_info.setStyleSheet("color: #80d8ff; font-weight: bold;")
+        self.lbl_chart_info.setText(self.score_manager.describe_current_chart())
+        self._statusbar.showMessage(
+            "直前のスコアの曲を付け替えました (次回から自動で認識します)" if fixed
+            else "曲を設定しました (次回から自動で認識します)", 6000,
+        )
+
+    def _diagnose_result(self, image, values):
+        """リザルトの読み取りに不確かな点があったときと、判定内訳がプレー中の読み取りと食い違ったときに保存する。"""
+        if not self.config.diagnostics_enabled:
+            return
+        names = ("score", "cool", "great", "good", "bad", "combo")
+        read = {name: getattr(values, name, None) for name in names} if values is not None else {}
+        if values is None or not values.is_complete or values.notes:
+            note = "; ".join(values.notes) if values is not None and values.notes else "読み取りに不確かな点がありました"
+            self.diagnostics.add(KIND_RESULT, image, read, note=note if values is not None else "スコアパネルを検出できませんでした")
+        live = self._song_judge
+        if (
+            values is not None and values.is_complete and self._last_play_image is not None and live.notes > 0
+            and (live.cool, live.great, live.good, live.bad)
+            != (values.cool, values.great, values.good, values.bad)
+        ):
+            self.diagnostics.add(
+                KIND_JUDGE, self._last_play_image,
+                {"cool": live.cool, "great": live.great, "good": live.good, "bad": live.bad},
+                suggested={"cool": values.cool, "great": values.great, "good": values.good, "bad": values.bad},
+                note="プレー中に読んだ判定内訳が、リザルトの値と一致しませんでした",
+            )
 
     def _process_result(self, image):
         """リザルト画面の数値を読み、数フレーム連続で同じ値になったら記録する。"""
@@ -543,6 +644,7 @@ class MainWindow(QMainWindow):
         """リザルト画面の読み取り結果をスコア履歴に記録する。"""
         self._result_pending = False
         try:
+            self._diagnose_result(image, values)
             record = self.screen_reader.read_result(
                 image,
                 live_judge=self._song_judge,
@@ -782,7 +884,9 @@ class MainWindow(QMainWindow):
 
     def _open_session_summary(self):
         from src.stats_dialog import SessionSummaryDialog
-        SessionSummaryDialog(self.score_manager, self._session_start, self).exec()
+        SessionSummaryDialog(
+            self.score_manager, self._session_start, self, config=self.config
+        ).exec()
 
     def _save_session_log(self):
         """終了時に、このセッションの成績を CSV に 1 行追記する (プレーが無ければ何もしない)。"""
@@ -794,6 +898,48 @@ class MainWindow(QMainWindow):
             append_session_log(os.path.join(folder, "popn_session_log.csv"), summary)
         except Exception:
             logger.error(traceback.format_exc())
+
+    def _refresh_after_data_change(self):
+        """復元・インポートなどで履歴が変わったあと、メインウィンドウの表示を合わせる。"""
+        self._today_notes = self.score_manager.get_today_notes(self._today_date)
+        self._last_played = self.score_manager.get_last_played_song()
+        self._last_played_song = self._format_last_played()
+        self.lbl_last_song.setText(self._last_played_song)
+        self._update_display()
+
+    def _update_music_list(self):
+        from src.data_actions import update_music_list
+        if update_music_list(self, self.score_manager, self.config):
+            self._refresh_after_data_change()
+
+    def _update_music_list_from_url(self):
+        from src.data_actions import update_music_list_from_url
+        if update_music_list_from_url(self, self.score_manager, self.config):
+            self._refresh_after_data_change()
+
+    def _create_backup(self):
+        from src.data_actions import create_backup
+        create_backup(self, self.score_manager)
+
+    def _restore_backup(self):
+        from src.data_actions import restore_backup
+        if restore_backup(self, self.score_manager):
+            self._refresh_after_data_change()
+
+    def _import_csv(self):
+        from src.data_actions import import_csv
+        if import_csv(self, self.score_manager):
+            self._refresh_after_data_change()
+
+    def _show_about(self):
+        QMessageBox.about(
+            self, self.ui.menu.about.replace("(&A)", "").rstrip("."),
+            f"{self.ui.window.main_title}\nバージョン {get_app_version()}",
+        )
+
+    def _open_diagnostics(self):
+        from src.diagnostics_dialog import DiagnosticsDialog
+        DiagnosticsDialog(self.diagnostics, self.score_manager, self).exec()
 
     def _export_csv(self):
         from src.score_dialog import export_csv_with_dialog

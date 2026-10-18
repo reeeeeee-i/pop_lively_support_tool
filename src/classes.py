@@ -137,6 +137,8 @@ class PopnScoreRecord:
     """記録後にスコア内容を手動修正したか"""
     screenshot_file: str = ""
     """リザルトのスクリーンショットのファイル名 (保存先フォルダ内)。保存していなければ空"""
+    ocr_title: str = ""
+    """プレー画面から OCR で読んだ曲名 (未照合)。曲の誤認識を直したときの学習に使う"""
 
     def __post_init__(self):
         if not self.timestamp:
