@@ -5,7 +5,7 @@ import os
 import time
 from datetime import datetime
 
-from src.classes import PopnOptions, PopnScoreRecord, format_song
+from src.classes import PopnOptions, PopnScoreRecord
 from src.db import PopnDatabase
 from src.logger import get_logger
 
@@ -30,6 +30,7 @@ class ScoreManager:
         self.current_options: PopnOptions = PopnOptions()
         self.current_music_id: str = ""
         self.current_song_title: str = "Unknown"
+        self.current_genre: str = ""
         self.current_level: int | str = ""
         self.current_difficulty: str = ""
         self._last_saved_time: float = 0.0
@@ -79,6 +80,7 @@ class ScoreManager:
             return False
         self.current_music_id = music["music_id"]
         self.set_current_song_title(music["title"])
+        self.current_genre = music.get("genre") or ""
         self.set_current_chart(music["level"], difficulty)
         return True
 
@@ -86,6 +88,7 @@ class ScoreManager:
         """次の曲に前曲の情報が誤適用されないよう曲名・レベル・難易度を初期化"""
         self.current_music_id = ""
         self.current_song_title = "Unknown"
+        self.current_genre = ""
         self.current_level = ""
         self.current_difficulty = ""
 
@@ -93,12 +96,12 @@ class ScoreManager:
         """指定日（デフォルトは本日）の記録から総打鍵数を計算する"""
         return self.db.get_today_notes(date_str or datetime.now().strftime("%Y-%m-%d"))
 
-    def get_last_played_song(self) -> str:
-        """最後にプレイした曲名を取得する（最新レコード）"""
+    def get_last_played_song(self) -> tuple[str, str, str] | None:
+        """最後にプレイした曲の (曲名, ジャンル名, 難易度区分) を取得する（最新レコード）"""
         if not self.records:
-            return ""
+            return None
         last = self.records[-1]
-        return format_song(last.title, last.difficulty)
+        return last.title, last.genre, last.difficulty
 
     # ------------------------------------------------------------------
     # レコード追加・DB保存

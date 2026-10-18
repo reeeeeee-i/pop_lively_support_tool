@@ -55,6 +55,10 @@ class UIText:
         direct_capture_all_monitors_tip = "旧直接取得で使います。"
         other_group                     = "その他"
         keep_on_top                     = "常に最前面表示する"
+        last_song_display               = "最後にプレイした曲の表記"
+        last_song_display_title         = "曲名"
+        last_song_display_genre         = "ジャンル名"
+        last_song_display_genre_title   = "ジャンル名(曲名)"
         lively_single_cpu               = "Lively の CPU 割り当てを 1 コアにする（ロード時間短縮）"
         lively_single_cpu_tip           = (
             "Lively の起動を検出したら、使用率が最小の CPU だけを割り当て、優先度を「高」にします。\n"

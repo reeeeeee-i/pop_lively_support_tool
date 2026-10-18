@@ -4,12 +4,12 @@ from __future__ import annotations
 from PySide6.QtWidgets import (
     QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QGroupBox,
     QHBoxLayout, QLabel, QLineEdit, QPushButton, QRadioButton, QButtonGroup,
-    QCheckBox, QListWidget, QListWidgetItem, QSlider, QSpinBox, QTabWidget,
+    QCheckBox, QComboBox, QListWidget, QListWidgetItem, QSlider, QSpinBox, QTabWidget,
     QTextEdit, QVBoxLayout, QWidget,
 )
 from PySide6.QtCore import Qt
 
-from src.config import CAPTURE_METHODS, Config, FALLBACK_SECONDS_RANGE, JPEG_QUALITY_RANGE
+from src.config import CAPTURE_METHODS, Config, LAST_SONG_DISPLAYS, FALLBACK_SECONDS_RANGE, JPEG_QUALITY_RANGE
 from src.funcs import load_ui_text
 from src.logger import LOG_MAX_SIZE_MB_RANGE
 
@@ -116,6 +116,18 @@ class ConfigDialog(QDialog):
         other_form = QFormLayout(other_group)
         self._chk_keep_on_top = QCheckBox(self.ui.feature.keep_on_top)
         other_form.addRow(self._chk_keep_on_top)
+        self._cmb_last_song = QComboBox()
+        last_song_names = {
+            "title":       self.ui.feature.last_song_display_title,
+            "genre":       self.ui.feature.last_song_display_genre,
+            "genre_title": self.ui.feature.last_song_display_genre_title,
+        }
+        for key in LAST_SONG_DISPLAYS:
+            self._cmb_last_song.addItem(last_song_names[key], key)
+        last_song_row = QHBoxLayout()
+        last_song_row.addWidget(self._cmb_last_song)
+        last_song_row.addStretch()
+        other_form.addRow(QLabel(self.ui.feature.last_song_display), last_song_row)
         self._chk_single_cpu = QCheckBox(self.ui.feature.lively_single_cpu)
         self._chk_single_cpu.setToolTip(self.ui.feature.lively_single_cpu_tip)
         other_form.addRow(self._chk_single_cpu)
@@ -317,6 +329,7 @@ class ConfigDialog(QDialog):
         self._chk_all_monitors.setChecked(self.config.direct_capture_all_monitors)
         self._chk_keep_on_top.setChecked(self.config.keep_on_top)
         self._chk_single_cpu.setChecked(self.config.lively_single_cpu)
+        self._cmb_last_song.setCurrentIndex(max(0, self._cmb_last_song.findData(self.config.last_song_display)))
         self._spin_log_size.setValue(self.config.log_max_size_mb)
         self._chk_skip_retire.setChecked(self.config.score_skip_retire)
         # 「毎回」は他の条件を上書きするので、他の条件を反映してから最後に設定する
@@ -347,6 +360,7 @@ class ConfigDialog(QDialog):
         self.config.direct_capture_all_monitors = self._chk_all_monitors.isChecked()
         self.config.keep_on_top                 = self._chk_keep_on_top.isChecked()
         self.config.lively_single_cpu           = self._chk_single_cpu.isChecked()
+        self.config.last_song_display           = self._cmb_last_song.currentData()
         self.config.log_max_size_mb             = self._spin_log_size.value()
         self.config.score_skip_retire           = self._chk_skip_retire.isChecked()
         if self._chk_shot_conds["all"].isChecked():

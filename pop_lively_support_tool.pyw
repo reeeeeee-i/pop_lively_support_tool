@@ -123,7 +123,9 @@ class MainWindow(QMainWindow):
         self._start_time = time.time()
 
         # 最後にプレイした曲
-        self._last_played_song = self.score_manager.get_last_played_song() or self.ui.main_display.none_song
+        # (曲名, ジャンル名, 難易度区分) または None。表記は設定に従って組み立てる
+        self._last_played = self.score_manager.get_last_played_song()
+        self._last_played_song = self._format_last_played()
 
         # 画面状態
         self.current_mode = DetectMode.unknown
@@ -478,7 +480,9 @@ class MainWindow(QMainWindow):
         song = self.screen_reader.read_play_song(image)
         if song.text and self.score_manager.identify_song(song.text, song.difficulty):
             self._title_scanned = True
-            self._set_last_played_song(self.score_manager.current_song_title, song.difficulty)
+            self._set_last_played_song(
+                self.score_manager.current_song_title, song.difficulty, self.score_manager.current_genre
+            )
         elif self._title_frames >= _TITLE_SCAN_INTERVAL_FRAMES * _TITLE_SCAN_MAX_TRIES:
             self._title_scanned = True
             logger.warning("曲を特定できませんでした (読み取り結果: '%s' / %s)", song.text, song.difficulty)
@@ -552,7 +556,8 @@ class MainWindow(QMainWindow):
             # 最後にプレイした曲の表示を更新
             song_title = record.title if record.title != "Unknown" else self.score_manager.current_song_title
             if song_title and song_title != "Unknown":
-                self._set_last_played_song(song_title, record.difficulty)
+                genre = record.genre or self.score_manager.current_genre
+                self._set_last_played_song(song_title, record.difficulty, genre)
         except Exception as e:
             logger.error("スコア保存処理エラー: %s", e)
 
@@ -628,8 +633,16 @@ class MainWindow(QMainWindow):
             logger.error(traceback.format_exc())
             self._statusbar.showMessage(self.ui.status.screenshot_failed, 6000)
 
-    def _set_last_played_song(self, title: str, difficulty: str):
-        self._last_played_song = format_song(title, difficulty)
+    def _format_last_played(self) -> str:
+        """設定の表記に従って、最後にプレイした曲の表示文字列を作る。"""
+        if self._last_played is None:
+            return self.ui.main_display.none_song
+        title, genre, difficulty = self._last_played
+        return format_song(title, difficulty, genre, self.config.last_song_display)
+
+    def _set_last_played_song(self, title: str, difficulty: str, genre: str = ""):
+        self._last_played = (title, genre, difficulty)
+        self._last_played_song = self._format_last_played()
         self.lbl_last_song.setText(self._last_played_song)
 
     def _reset_song_judge(self):
@@ -716,6 +729,9 @@ class MainWindow(QMainWindow):
             # 最前面フラグの更新 (フラグを変えるとウィンドウが隠れるので表示し直す)
             self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.config.keep_on_top)
             self.show()
+            # 最後にプレイした曲の表記変更を反映
+            self._last_played_song = self._format_last_played()
+            self.lbl_last_song.setText(self._last_played_song)
 
     def _open_obs_settings(self):
         from src.obs_dialog import OBSControlDialog
