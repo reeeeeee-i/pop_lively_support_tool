@@ -82,11 +82,19 @@ class UIText:
             "上限を超えると、古いログから自動的に削除します。"
         )
         score_save_group                = "スコア保存時の条件"
-        check_update_on_startup         = "起動時に新しいバージョンを確認する"
-        check_update_on_startup_tip     = (
+        update_check_mode               = "起動時の更新チェック"
+        update_check_auto               = "新しいバージョンを自動で更新する"
+        update_check_notify             = "更新内容を確認してから更新する"
+        update_check_off                = "確認しない"
+        update_check_mode_tip           = (
             "起動時に、GitHub のリリースで新しいバージョンがないか確認します (確認のため GitHub に接続します)。\n"
-            "新しいバージョンがあるときだけ、更新の案内を表示します。\n"
-            "無効のときも、メニュー → ヘルプ → 更新を確認 でいつでも確認できます。"
+            "どれを選んでも、メニュー → ヘルプ → 更新を確認 でいつでも確認できます。\n"
+            "「新しいバージョンを自動で更新する」は、新しいバージョンが見つかると、確認なしでダウンロードして更新・再起動します。"
+        )
+        update_skip_until_next          = "通知済みのバージョンは、次のバージョンが出るまで再通知しない"
+        update_skip_until_next_tip      = (
+            "一度お知らせしたバージョンは、さらに新しいバージョンが出るまで、起動時には知らせません。\n"
+            "メニューからの確認では、いつでも表示します。"
         )
         music_list_url                  = "曲リストの取得先 URL"
         music_list_url_tip              = (
