@@ -291,6 +291,28 @@ def export_csv_with_dialog(parent, score_manager: ScoreManager) -> None:
         QMessageBox.critical(parent, "エラー", f"CSV出力に失敗しました:\n{e}")
 
 
+def import_csv_with_dialog(parent, score_manager: ScoreManager) -> bool:
+    """CSV を選ばせてスコア履歴に取り込み、結果をメッセージで知らせる。取り込めた場合は True。"""
+    path, _ = QFileDialog.getOpenFileName(
+        parent,
+        "CSVインポート元の選択",
+        score_manager.csv_path,
+        "CSV Files (*.csv);;All Files (*)",
+    )
+    if not path:
+        return False
+    try:
+        count = score_manager.import_csv(path)
+    except Exception as e:
+        QMessageBox.critical(parent, "エラー", f"CSVの取り込みに失敗しました:\n{e}")
+        return False
+    QMessageBox.information(
+        parent, "完了",
+        f"{count} 件のスコアを取り込みました。\n(取り込み済みの記録は重複としてスキップされます)",
+    )
+    return count > 0
+
+
 def open_screenshot(parent, record: PopnScoreRecord, config: Config | None) -> None:
     """記録に紐づくスクリーンショットを既定のアプリで開く。ファイルは設定の保存先フォルダ内を探す。"""
     if not record.screenshot_file:
@@ -570,6 +592,10 @@ class ScoreHistoryDialog(QDialog):
         btn_export_csv = QPushButton("CSVエクスポート...")
         btn_export_csv.clicked.connect(lambda: export_csv_with_dialog(self, self.score_manager))
         top_hbox.addWidget(btn_export_csv)
+
+        btn_import_csv = QPushButton("CSVインポート...")
+        btn_import_csv.clicked.connect(self._import_csv)
+        top_hbox.addWidget(btn_import_csv)
 
         btn_open_csv = QPushButton("CSVファイルを外部アプリで開く")
         btn_open_csv.clicked.connect(self._open_csv)
@@ -869,6 +895,10 @@ class ScoreHistoryDialog(QDialog):
             if not self._table.isRowHidden(i.row())
         )
         if _confirm_and_delete(self, self.score_manager, [self._rows[r] for r in rows]):
+            self._load_records()
+
+    def _import_csv(self):
+        if import_csv_with_dialog(self, self.score_manager):
             self._load_records()
 
     def _open_csv(self):

@@ -113,6 +113,19 @@ class PopnOptions:
         return f"PopnOptions({self.to_summary()})"
 
 
+_FORMULA_PREFIXES = ("=", "+", "-", "@")
+
+
+def escape_formula(text: str) -> str:
+    """表計算ソフトで式として解釈されないよう、式の先頭文字で始まる文字列の頭に ' を付ける。"""
+    return "'" + text if text.startswith(_FORMULA_PREFIXES) else text
+
+
+def unescape_formula(text: str) -> str:
+    """escape_formula の逆変換"""
+    return text[1:] if text.startswith(tuple("'" + p for p in _FORMULA_PREFIXES)) else text
+
+
 @dataclass(eq=False)
 class PopnScoreRecord:
     """1プレーごとのスコア記録クラス"""
@@ -157,7 +170,7 @@ class PopnScoreRecord:
         """CSV 1行分のリスト。列順は src/db.py の CSV_HEADERS"""
         return [
             self.level if self.level else "",
-            self.title,
+            escape_formula(self.title),
             self.difficulty_code,
             self.score,
             self.cool,
@@ -167,6 +180,9 @@ class PopnScoreRecord:
             self.combo,
             *(getattr(self.options, key) for key in OPTION_KEYS),
             self.timestamp,
+            self.music_id,
+            int(self.modified),
+            self.screenshot_file,
         ]
 
 

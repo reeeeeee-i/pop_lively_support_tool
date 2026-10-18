@@ -55,7 +55,10 @@ class ScoreManager:
         # 既存 CSV があり、DB にスコアがまだない場合は移行
         if len(self.records) == 0 and os.path.exists(self.csv_path):
             logger.info("既存の CSV ファイルからスコア履歴を移行します: %s", self.csv_path)
-            imported_count = self.db.import_csv(self.csv_path)
+            try:
+                imported_count = self.db.import_csv(self.csv_path)
+            except Exception:
+                imported_count = 0   # 詳細は db 側でログ済み。起動は続ける
             if imported_count > 0:
                 self.load_from_db()
 
@@ -300,13 +303,6 @@ class ScoreManager:
         self.last_unidentified_record = None
         self.load_from_db()
 
-    def import_csv(self, csv_path: str) -> int:
-        """CSV からスコアを取り込む。取り込んだ件数を返す。"""
-        count = self.db.import_csv(csv_path)
-        if count:
-            self.load_from_db()
-        return count
-
     # ------------------------------------------------------------------
     # CSV 出力・エクスポート
     # ------------------------------------------------------------------
@@ -316,6 +312,13 @@ class ScoreManager:
         out_path = dest_path or self.csv_path
         self.db.export_csv(out_path)
         return out_path
+
+    def import_csv(self, src_path: str) -> int:
+        """CSV ファイルからスコアを取り込み、履歴を読み込み直す。取り込んだ件数を返す"""
+        count = self.db.import_csv(src_path)
+        if count > 0:
+            self.load_from_db()
+        return count
 
     def open_csv(self) -> bool:
         """最新の DB 状態を CSV に出力し、システムの既定アプリケーション（Excel等）で開く"""

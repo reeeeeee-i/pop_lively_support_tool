@@ -177,20 +177,3 @@ def restore_backup(parent, score_manager: ScoreManager) -> bool:
         f"復元しました ({len(score_manager.records)} 件のスコア)。\n復元前の状態: {safety}",
     )
     return True
-
-
-def import_csv(parent, score_manager: ScoreManager) -> bool:
-    """CSV からスコアを取り込む。取り込めたら True。"""
-    path, _ = QFileDialog.getOpenFileName(parent, "インポートする CSV の選択", "", _CSV_FILTER)
-    if not path:
-        return False
-    try:
-        count = score_manager.import_csv(path)
-    except Exception as e:
-        _error(parent, "CSV インポート", e)
-        return False
-    QMessageBox.information(
-        parent, "CSV インポート",
-        f"{count} 件のスコアを取り込みました。\n(プレー日時とスコアが同じ記録は取り込み済みとして飛ばします)",
-    )
-    return count > 0

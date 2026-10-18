@@ -54,7 +54,11 @@ def main():
 
     elif args.action == "import-csv":
         print(f"CSV からスコアをインポート中: {csv_path} -> {db_path}")
-        count = db.import_csv(csv_path)
+        try:
+            count = db.import_csv(csv_path)
+        except Exception as e:
+            print(f"インポートに失敗しました: {e}")
+            raise SystemExit(1)
         print(f"インポート完了: {count} 件のスコアを取り込みました。")
 
     elif args.action == "stats":

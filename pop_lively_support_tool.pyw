@@ -927,8 +927,8 @@ class MainWindow(QMainWindow):
             self._refresh_after_data_change()
 
     def _import_csv(self):
-        from src.data_actions import import_csv
-        if import_csv(self, self.score_manager):
+        from src.score_dialog import import_csv_with_dialog
+        if import_csv_with_dialog(self, self.score_manager):
             self._refresh_after_data_change()
 
     def _show_about(self):
