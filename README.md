@@ -116,7 +116,7 @@ beatmania IIDX INFINITAS 向けツール [inf_daken_counter_obsw](https://github
 曲リストは、このリポジトリの `popn_music_list.json`（`main` ブランチ）をそのまま配信元にしています。新曲を反映するときは、次の手順です。
 
 1. `generate_music_list.py` で JSON を作り直す
-2. `python tools/sign_release.py sign-music popn_music_list.json` で署名する（`popn_music_list.json.sig` ができる。通し番号は自動で 1 増える）
+2. `python tools/sign_release.py sign-music popn_music_list.json` で署名する（JSON と `.sig` は `.gitattributes` で改行コードを変換しない設定にしてあります。署名したバイト列と、配信されるバイト列を一致させるためです。署名後に JSON を編集し直さないでください）（`popn_music_list.json.sig` ができる。通し番号は自動で 1 増える）
 3. JSON と `.sig` を**一緒に**プルリクエストにして、`main` にマージする（`main` は保護されているため直接プッシュはできません）
 
 アプリは `https://raw.githubusercontent.com/reeeeeee-i/pop_lively_support_tool/main/popn_music_list.json` を取得するので、反映まで数分かかることがあります。各曲の `music_id` は変えないでください（スコアとの紐づけに使っています）。
