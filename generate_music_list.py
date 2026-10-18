@@ -3,6 +3,7 @@ import os
 import re
 import html
 import unicodedata
+import uuid
 from collections import defaultdict
 
 def clean_cell(cell_html):
@@ -287,6 +288,48 @@ def build_music_list(shinkyoku_html_path, kyukyoku_html_path, lively_html_path):
 
     return all_songs, len(shinkyoku_songs), len(kyukyoku_songs), len(lively_only_songs)
 
+def assign_music_ids(songs, existing_songs):
+    """既存リストを基に music_id を割り当てる。見つからない曲は新しい UUID を振る。
+
+    music_id はスコアとの紐づけに使われるので、既存の曲は必ず同じ ID を引き継ぐ。
+    照合は厳しい条件から順に行い、既存の1曲は1回しか使わない
+    (同名・同アーティストの曲が複数あっても ID が重複しない)。
+    戻り値は (引き継いだ数, 新規に振った数, 使われなかった既存の曲のリスト)。
+    """
+    key_funcs = [
+        lambda x: (norm(x['genre']), norm(x['title']), norm(x['artist'])),
+        lambda x: (norm(x['title']), norm(x['artist'])),
+        lambda x: (norm(x['genre']), norm(x['title'])),
+    ]
+    pools = [defaultdict(list) for _ in key_funcs]
+    for e in existing_songs:
+        if not e.get('music_id'):
+            continue
+        for pool, kf in zip(pools, key_funcs):
+            pool[kf(e)].append(e)
+
+    used = set()
+    for song in songs:
+        song['music_id'] = None
+
+    # 緩い条件の照合が、厳しい条件で一致する曲の ID を奪わないよう、条件ごとに全曲を処理する
+    for pool, kf in zip(pools, key_funcs):
+        for song in songs:
+            if song['music_id']:
+                continue
+            for e in pool.get(kf(song), []):
+                if e['music_id'] not in used:
+                    used.add(e['music_id'])
+                    song['music_id'] = e['music_id']
+                    break
+
+    n_kept = sum(1 for s in songs if s['music_id'])
+    for song in songs:
+        if not song['music_id']:
+            song['music_id'] = str(uuid.uuid4())
+    unused = [e for e in existing_songs if e.get('music_id') and e['music_id'] not in used]
+    return n_kept, len(songs) - n_kept, unused
+
 if __name__ == '__main__':
     songs, n_new, n_old, n_lively_only = build_music_list(
         'tmp_scrape/shinkyoku.html',
@@ -296,6 +339,15 @@ if __name__ == '__main__':
     print(f'Done! New: {n_new}, Old: {n_old}, Lively-only: {n_lively_only}, Total: {len(songs)}')
 
     out_path = 'popn_music_list.json'
-    with open(out_path, 'w', encoding='utf-8') as f:
+    existing = []
+    if os.path.exists(out_path):
+        with open(out_path, 'r', encoding='utf-8') as f:
+            existing = json.load(f)
+    n_kept, n_added, unused = assign_music_ids(songs, existing)
+    print(f'music_id: kept {n_kept}, new {n_added}, dropped {len(unused)}')
+    for e in unused:
+        print(f"  dropped: {e['title']} / {e['artist']} ({e['music_id']})")
+
+    with open(out_path, 'w', encoding='utf-8', newline='\n') as f:
         json.dump(songs, f, ensure_ascii=False, indent=2)
     print(f'Wrote {len(songs)} songs to {out_path} ({os.path.getsize(out_path)} bytes)')
