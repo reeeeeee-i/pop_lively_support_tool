@@ -21,6 +21,14 @@ popn.db
 *.db-wal
 *.db-shm
 popn_score.csv
+popn_session_log.csv
+backup/
+diagnostics/
+_update/
+
+# 署名用の秘密鍵 (絶対にコミットしない)
+signing_key*
+*.key
 
 # 作業用・解析用の一時ファイル
 scratch/

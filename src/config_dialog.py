@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt
 from src.config import CAPTURE_METHODS, Config, LAST_SONG_DISPLAYS, FALLBACK_SECONDS_RANGE, JPEG_QUALITY_RANGE
 from src.funcs import load_ui_text
 from src.logger import LOG_MAX_SIZE_MB_RANGE
+from src.music_list_fetch import DEFAULT_MUSIC_LIST_URL
 
 # 1920x1080 のリザルト画面を保存したときのファイルサイズの目安 (KB)。実測の平均値
 _PNG_SIZE_KB = 1630
@@ -141,6 +142,14 @@ class ConfigDialog(QDialog):
         log_row.addWidget(self._spin_log_size)
         log_row.addStretch()
         other_form.addRow(lbl_log_size, log_row)
+        self._chk_check_update = QCheckBox(self.ui.feature.check_update_on_startup)
+        self._chk_check_update.setToolTip(self.ui.feature.check_update_on_startup_tip)
+        other_form.addRow(self._chk_check_update)
+        self._edit_music_list_url = QLineEdit()
+        self._edit_music_list_url.setToolTip(self.ui.feature.music_list_url_tip)
+        lbl_music_url = QLabel(self.ui.feature.music_list_url)
+        lbl_music_url.setToolTip(self.ui.feature.music_list_url_tip)
+        other_form.addRow(lbl_music_url, self._edit_music_list_url)
         layout.addWidget(other_group)
 
         # スコア保存時の条件
@@ -150,6 +159,14 @@ class ConfigDialog(QDialog):
         self._chk_skip_retire.setToolTip(self.ui.feature.score_skip_retire_tip)
         save_vbox.addWidget(self._chk_skip_retire)
         layout.addWidget(save_group)
+
+        # 認識診断
+        diag_group = QGroupBox(self.ui.feature.diagnostics_group)
+        diag_vbox = QVBoxLayout(diag_group)
+        self._chk_diagnostics = QCheckBox(self.ui.feature.diagnostics_enabled)
+        self._chk_diagnostics.setToolTip(self.ui.feature.diagnostics_enabled_tip)
+        diag_vbox.addWidget(self._chk_diagnostics)
+        layout.addWidget(diag_group)
 
         # リザルトのスクリーンショット
         shot_group = QGroupBox(self.ui.feature.screenshot_group)
@@ -331,7 +348,10 @@ class ConfigDialog(QDialog):
         self._chk_single_cpu.setChecked(self.config.lively_single_cpu)
         self._cmb_last_song.setCurrentIndex(max(0, self._cmb_last_song.findData(self.config.last_song_display)))
         self._spin_log_size.setValue(self.config.log_max_size_mb)
+        self._edit_music_list_url.setText(self.config.music_list_url)
+        self._chk_check_update.setChecked(self.config.check_update_on_startup)
         self._chk_skip_retire.setChecked(self.config.score_skip_retire)
+        self._chk_diagnostics.setChecked(self.config.diagnostics_enabled)
         # 「毎回」は他の条件を上書きするので、他の条件を反映してから最後に設定する
         for key in ("best", "fullcombo", "perfect", "all"):
             self._chk_shot_conds[key].setChecked(key in self.config.result_screenshot_conditions)
@@ -362,7 +382,10 @@ class ConfigDialog(QDialog):
         self.config.lively_single_cpu           = self._chk_single_cpu.isChecked()
         self.config.last_song_display           = self._cmb_last_song.currentData()
         self.config.log_max_size_mb             = self._spin_log_size.value()
+        self.config.check_update_on_startup     = self._chk_check_update.isChecked()
+        self.config.music_list_url              = self._edit_music_list_url.text().strip() or DEFAULT_MUSIC_LIST_URL
         self.config.score_skip_retire           = self._chk_skip_retire.isChecked()
+        self.config.diagnostics_enabled         = self._chk_diagnostics.isChecked()
         if self._chk_shot_conds["all"].isChecked():
             # 「毎回」を外したときに戻せるよう、選ぶ前の条件を一緒に保存する
             self.config.result_screenshot_conditions = ["all"] + [

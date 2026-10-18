@@ -19,6 +19,17 @@ class UIText:
         export_csv    = "CSVファイルを出力(&E)..."
         import_csv    = "CSVファイルから取り込み(&I)..."
         open_csv      = "CSVファイルを開く(&O)"
+        stats         = "統計(&T)..."
+        data          = "データ(&D)"
+        update_music_list = "曲リストをファイルから更新(&U)..."
+        update_music_list_url = "曲リストをURLから更新(&W)..."
+        backup        = "バックアップを作成(&B)..."
+        restore       = "バックアップから復元(&L)..."
+        diagnostics   = "認識診断(&G)..."
+        help          = "ヘルプ(&H)"
+        check_update  = "更新を確認(&U)..."
+        about         = "バージョン情報(&A)..."
+        session_summary = "セッションサマリー(&M)..."
 
     class status:
         waiting_game     = "ゲーム画面を待機中..."
@@ -71,6 +82,24 @@ class UIText:
             "上限を超えると、古いログから自動的に削除します。"
         )
         score_save_group                = "スコア保存時の条件"
+        check_update_on_startup         = "起動時に新しいバージョンを確認する"
+        check_update_on_startup_tip     = (
+            "起動時に、GitHub のリリースで新しいバージョンがないか確認します (確認のため GitHub に接続します)。\n"
+            "新しいバージョンがあるときだけ、更新の案内を表示します。\n"
+            "無効のときも、メニュー → ヘルプ → 更新を確認 でいつでも確認できます。"
+        )
+        music_list_url                  = "曲リストの取得先 URL"
+        music_list_url_tip              = (
+            "メニュー → データ → 曲リストをURLから更新 で取得する popn_music_list.json の URL です (https のみ)。\n"
+            "空欄にすると、既定の URL (このツールのリポジトリの main ブランチ) に戻ります。"
+        )
+        diagnostics_group               = "認識診断"
+        diagnostics_enabled             = "読み取りに失敗した画面を診断データとして保存する"
+        diagnostics_enabled_tip         = (
+            "曲を特定できなかったプレー画面、読み取りに不確かな点があったリザルト画面、判定内訳がリザルトと\n"
+            "食い違ったプレー画面を diagnostics フォルダに保存します。保存したデータは、メニュー → データ →\n"
+            "認識診断 で正解値を確定すると、テンプレート作成ツールのサンプルにできます。"
+        )
         score_skip_retire               = "retire 時は保存しない"
         score_skip_retire_tip           = (
             "リタイアしたプレー（リザルト画面に「Retire」と表示されるプレー）のスコアを記録しません。\n"
@@ -122,6 +151,10 @@ class UIText:
         uptime         = "起動時間"
         today_notes    = "本日の打鍵数"
         last_song      = "最後にプレイした曲"
+        chart_info     = "この譜面の成績"
+        pick_song      = "曲を選択..."
+        pick_song_tip  = "曲を特定できなかったときに、正しい曲を選びます。選んだ曲は次回から自動で認識します。"
+        song_unidentified = "曲を特定できませんでした (読み取り: {text})"
         reset_notes    = "本日の打鍵数をリセット"
         screenshot_tip = "現在の画面のスクリーンショットを保存"
         open_screenshot_dir = "スクリーンショットのフォルダを開く"

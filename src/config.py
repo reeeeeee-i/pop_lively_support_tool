@@ -5,6 +5,7 @@ import json
 import os
 import traceback
 
+from src.music_list_fetch import DEFAULT_MUSIC_LIST_URL
 from src.logger import (
     DEFAULT_LOG_MAX_SIZE_MB, LOG_MAX_SIZE_MB_RANGE, get_logger, set_log_max_size_mb,
 )
@@ -35,6 +36,10 @@ _KEYS = (
     "score_db_path",
     "score_history_columns",
     "score_skip_retire",
+    "diagnostics_enabled",
+    "music_list_url",
+    "music_list_serial",
+    "check_update_on_startup",
     "result_screenshot_conditions",
     "result_screenshot_dir",
     "result_screenshot_format",
@@ -109,6 +114,21 @@ class Config:
         self.score_skip_retire: bool = False
         """リタイアしたプレーのスコアを保存しない"""
 
+        self.music_list_serial: int = 0
+        """これまでに取り込んだ曲リストの署名の通し番号。これより古い曲リストは取り込まない (巻き戻し防止)"""
+
+        # 自動更新
+        self.check_update_on_startup: bool = False
+        """起動時に、GitHub で新しいバージョンを確認する (既定は無効。メニューからはいつでも確認できる)"""
+
+        # 曲リストの取得先
+        self.music_list_url: str = DEFAULT_MUSIC_LIST_URL
+        """「曲リストをURLから更新」で取得する popn_music_list.json の URL (https)"""
+
+        # 認識診断
+        self.diagnostics_enabled: bool = False
+        """読み取りに失敗・不一致だった画面を diagnostics フォルダに保存する"""
+
         # リザルト画面のスクリーンショット
         self.result_screenshot_conditions: list = []
         """保存条件 (いずれかを満たせば保存。空=無効)。
@@ -158,6 +178,10 @@ class Config:
                 )
             elif not isinstance(self.result_screenshot_conditions, list):
                 self.result_screenshot_conditions = []
+            if isinstance(self.music_list_serial, bool) or not isinstance(self.music_list_serial, int):
+                self.music_list_serial = 0
+            if not isinstance(self.music_list_url, str) or not self.music_list_url.strip():
+                self.music_list_url = DEFAULT_MUSIC_LIST_URL
             if self.last_song_display not in LAST_SONG_DISPLAYS:
                 self.last_song_display = "title"
             if self.result_screenshot_format not in SCREENSHOT_FORMATS:
