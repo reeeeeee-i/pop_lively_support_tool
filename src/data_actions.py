@@ -77,7 +77,7 @@ def update_music_list(parent, score_manager: ScoreManager, config) -> bool:
     return _apply_music_list(parent, score_manager, config, music_list, "曲リストの更新")
 
 
-class _FetchThread(QThread):
+class FetchThread(QThread):
     """曲リストの取得 (ネットワーク待ちで画面が固まらないよう別スレッドで行う)"""
 
     finished_with = Signal(object, str)   # (MusicList or None, エラーメッセージ)
@@ -115,7 +115,7 @@ def update_music_list_from_url(parent, score_manager: ScoreManager, config) -> b
     progress.setWindowTitle("曲リストをURLから更新")
     progress.setWindowModality(Qt.WindowModality.WindowModal)
     progress.setMinimumDuration(0)
-    thread = _FetchThread(url, config.music_list_serial, parent)
+    thread = FetchThread(url, config.music_list_serial, parent)
     result: dict = {}
     loop = QEventLoop()
 
@@ -134,6 +134,23 @@ def update_music_list_from_url(parent, score_manager: ScoreManager, config) -> b
         QMessageBox.critical(parent, "曲リストをURLから更新", f"曲リストを取り込めませんでした。\n\n{result['error']}")
         return False
     return _apply_music_list(parent, score_manager, config, result["music_list"], "曲リストをURLから更新")
+
+
+def apply_music_list_quietly(score_manager: ScoreManager, config, music_list: MusicList) -> int | None:
+    """検証済みの曲リストを、確認の画面を出さずに取り込む (起動時の確認用)。
+
+    曲を特定できたスコアの件数を返す。取り込めなかったときは None (通し番号は進めない)。
+    """
+    try:
+        added, relinked = score_manager.apply_music_list(music_list.items)
+    except Exception as e:
+        logger.error("曲リストの取り込みに失敗: %s", e)
+        return None
+    if music_list.serial is not None and music_list.serial > config.music_list_serial:
+        config.music_list_serial = music_list.serial
+        config.save_config()
+    logger.info("曲リストを取り込みました (追加 %d 曲 / 紐づけ %d 件 / 通し番号 %s)", added, relinked, music_list.serial)
+    return relinked
 
 
 def create_backup(parent, score_manager: ScoreManager) -> None:

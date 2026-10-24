@@ -168,12 +168,16 @@ class MainWindow(QMainWindow):
 
         # 自動更新 (確認はメニュー、または設定で有効なら起動の少しあと)
         from src.update_dialog import UpdateController
-        self.updater = UpdateController(self, self.close, self.config)
+        self.updater = UpdateController(self, self.close)
 
         self._setup_ui()
         self._setup_obs()
-        if self.config.update_check_mode != "off":
-            QTimer.singleShot(5000, lambda: self.updater.check(silent=True, startup=True))
+        # 曲リストは確認なしで自動更新し、アプリ本体は設定の更新チェック方式に従う
+        from src.startup_check import StartupUpdateCheck
+        self.startup_check = StartupUpdateCheck(
+            self, self.config, self.score_manager, self.updater, self._refresh_after_data_change
+        )
+        QTimer.singleShot(1500, self.startup_check.start)
 
         # メインループ
         self._timer = QTimer(self)
