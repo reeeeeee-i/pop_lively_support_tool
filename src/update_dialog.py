@@ -17,7 +17,7 @@ from src.updater import ReleaseInfo, UpdateError
 logger = get_logger(__name__)
 
 
-class _CheckThread(QThread):
+class CheckThread(QThread):
     """最新リリースの確認 (ネットワーク待ちで画面が固まらないよう別スレッドで行う)"""
 
     finished_with = Signal(object, str)   # (ReleaseInfo or None, エラーメッセージ)
@@ -68,13 +68,11 @@ class _DownloadThread(QThread):
 class UpdateController(QObject):
     """更新の確認から適用までを進める。適用するときは、アプリを終了するため quit_app を呼ぶ。"""
 
-    def __init__(self, parent, quit_app: Callable[[], None], config=None):
+    def __init__(self, parent, quit_app: Callable[[], None]):
         super().__init__(parent)
         self._parent = parent
-        self._config = config
-        self._startup = False
         self._quit_app = quit_app
-        self._check_thread: _CheckThread | None = None
+        self._check_thread: CheckThread | None = None
         self._download_thread: _DownloadThread | None = None
         self._silent = False
         self._busy = False
@@ -83,15 +81,14 @@ class UpdateController(QObject):
     # 確認
     # ------------------------------------------------------------------
 
-    def check(self, silent: bool = False, startup: bool = False) -> None:
-        """最新バージョンを確認する。silent=True (起動時の自動確認) は、新しい版があるときだけ知らせる。
-        startup=True は起動時の確認で、設定の更新チェック方式 (自動適用 / 通知のみ) に従う。"""
+    def check(self, silent: bool = False) -> None:
+        """最新バージョンを確認する。silent=True は、新しい版があるときだけ知らせる。
+        (起動時の確認は、曲リストの確認とまとめて src/startup_check.py が行う)"""
         if self._busy:
             return
         self._busy = True
         self._silent = silent
-        self._startup = startup
-        self._check_thread = _CheckThread(self)
+        self._check_thread = CheckThread(self)
         self._check_thread.finished_with.connect(self._on_checked)
         self._check_thread.start()
 
@@ -109,18 +106,6 @@ class UpdateController(QObject):
                     self._parent, "更新の確認", f"最新バージョンです (バージョン {current})。"
                 )
             return
-        if self._startup and self._config is not None:
-            if self._config.update_check_mode == "auto" and is_frozen():
-                logger.info("新しいバージョン %s を自動で適用します", release.tag)
-                self._download(release)
-                return
-            notified = self._config.update_notified_tag
-            if self._config.update_skip_until_next and notified and not is_newer(release.tag, notified):
-                logger.info("バージョン %s は通知済みのため、起動時の案内を省略します", release.tag)
-                return
-            if notified != release.tag:
-                self._config.update_notified_tag = release.tag
-                self._config.save_config()
         self._offer_update(release, current)
 
     # ------------------------------------------------------------------
@@ -156,6 +141,10 @@ class UpdateController(QObject):
             QDesktopServices.openUrl(QUrl(release.page_url))
         elif btn_update is not None and clicked is btn_update:
             self._download(release)
+
+    def apply_release(self, release: ReleaseInfo) -> None:
+        """release をダウンロードして適用する (適用するときはアプリを終了する)。"""
+        self._download(release)
 
     def _download(self, release: ReleaseInfo) -> None:
         try:
