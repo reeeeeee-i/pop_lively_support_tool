@@ -1388,6 +1388,32 @@
   },
   {
     "ver": "pop'n music High☆Cheers!!",
+    "genre": "ハピネスモータウンⓊ",
+    "title": "How Many Eyes On You?Ⓤ",
+    "artist": "青野りえ+mizuno",
+    "bpm": "210",
+    "easy": 10,
+    "normal": 27,
+    "hyper": 40,
+    "ex": 46,
+    "pack": "",
+    "music_id": "0ad32859-d462-45c3-b12d-7a118190c9cf"
+  },
+  {
+    "ver": "pop'n music High☆Cheers!!",
+    "genre": "J-ハウスⓊ",
+    "title": "時が戻れば...Ⓤ",
+    "artist": "阿部靖広 feat.ゆめめ",
+    "bpm": "125",
+    "easy": 13,
+    "normal": 29,
+    "hyper": 38,
+    "ex": 45,
+    "pack": "",
+    "music_id": "f113bada-2d36-4cbc-a86c-e59f4348e7f9"
+  },
+  {
+    "ver": "pop'n music High☆Cheers!!",
     "genre": "キューティーシャッフル",
     "title": "charm♡you",
     "artist": "U-ske feat.花柚",
