@@ -386,7 +386,7 @@
     "normal": 18,
     "hyper": 36,
     "ex": 44,
-    "pack": "",
+    "pack": "版",
     "music_id": "aa9fd5f9-2436-42f9-ba2a-7b2959fce2a1",
     "banner": "m4WEnZWUmoCAl2xjmHZemHdel2lkl2lnmnJvnYBYnHxfmnxjmn1km4Fsm356mnd1m4B/nZmYm4l9f3JpenBpfnp3d29venV1e25scW1lf3Vrg21mfnRqmn9mm41/m4OCmnVznZ2dm4t8fXVtd3JtfHd2eXNyfXd3dWtkhWtXgnRsfmtqfHJrmoFrnI2AnJCImoBwnJKJm4x/moJrmnxlmW9smW1rmnBsloh1koJyj4B4kYGAlYSAkIiAk46KjYiE"
   },
@@ -1773,7 +1773,7 @@
     "easy": 11,
     "normal": 22,
     "hyper": 33,
-    "ex": null,
+    "ex": 44,
     "pack": "",
     "music_id": "c0afef3b-5f2f-4264-a8e9-dc2a7db16c77"
   },
@@ -1880,6 +1880,19 @@
     "ex": 45,
     "pack": "",
     "music_id": "145303a2-55b7-48af-9efe-097a59cac1fc"
+  },
+  {
+    "ver": "pop'n music High☆Cheers!!",
+    "genre": "ボッサラウンジ",
+    "title": "LA BRISE D'ETE",
+    "artist": "Orange Lounge",
+    "bpm": "100",
+    "easy": 19,
+    "normal": 21,
+    "hyper": 31,
+    "ex": 38,
+    "pack": "",
+    "music_id": "ba67d23d-59d1-4015-8c97-6505a7cb0ecb"
   },
   {
     "ver": "pop'n music",
@@ -2241,7 +2254,7 @@
     "normal": 24,
     "hyper": 33,
     "ex": 42,
-    "pack": "",
+    "pack": "26/11",
     "music_id": "22d45c53-5685-4d2e-a7ee-7356b1f536f3",
     "banner": "iZVyiY9ueY+MfoCZbIaaf4+LfIKGe46Ieo2Oe46NeYiNf4KYcYqZdoN/c2B1c2F3dmtyfIqYhJSifpGidY2he5CifJCigo9zcoWVhJSieo+hgpOicouedIGNc2JzdmdpdGRxcGl0fGh7Y4WIc4qIdn+NbIiMco2DeYiCeIV4dISNc3V3fIhifH1XgWRVhWVbcV5ygmNWdHxfZo1+dY2dgZOhg5ShcYuVeI2Vc4mUe4qedo+dhIhlkWxMfHRWh2RQ"
   },
@@ -2255,7 +2268,7 @@
     "normal": 15,
     "hyper": null,
     "ex": null,
-    "pack": "",
+    "pack": "26/10",
     "music_id": "3d26c282-868e-4921-bc8c-3db3203e1374",
     "banner": "c1lecl5ib4h1b4h0m5eDlpR9YIV5cIuBbYl9a4l8jZODhpB9Z4VyaoJ0cV9icFZgg3d1fWZrmpaCm5V3m5mQm5eGm5Z9m5iJkpJ2lJJ1mZV9mJaBm5NvlY59gGdmg3Z0iH1NbYFqU4OAbn6BgX9+fn19fX1/eH2CeH2GdnqDf3SMe3mGiHuIdIt/lI1ui4BMf3VJlJB+b46Zg3aUgn+Wj3eVkXmVhYCXln+Xjn+WhXyWf3eVcHKUP4CUc4mAfnRL"
   },
@@ -2689,7 +2702,7 @@
     "normal": 25,
     "hyper": null,
     "ex": null,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "61124ca7-dc06-4b19-8bb2-9816ff3a47f0",
     "banner": "cktwbTxqf0x8i3WKioqLo6OknJydioqLmJiZnZ2ejo6Pi4uMeXh5hYWGeHh4hoaHi1FwbGlriFx0iHmBlZWWl5eYlpaXkJCRmZmZl5eYioqLjo6OiIiIcnJyc3JzdHN1enh5eHN4c2ZveHh4fHx9eXl6g4ODgH+Ai4uLgoKDgICAgICAf3+AbW1ub29vdXV1TExMm5SbhYSFgICBk5OUY19caGRhcnJyb29xcnJ0g4ODgICBioqKgICAfHx8fXx9"
   },
@@ -2913,7 +2926,7 @@
     "normal": 26,
     "hyper": 32,
     "ex": null,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "dda17116-f33b-44e5-8951-8bcec5f394b9",
     "banner": "a1tUe2pdcmNZiHVkkn1oaGJlg4ybfYmbjpKYe4qfeoWWg4GBh4iKiIySh4yVj5GWj3lliHdmjn5vn4lwaF1Vf3l5kZeggY6gkJeghpGfgY2eiIeIhouRhIaKh5GejJCVhXJhjnllkHtmmYNrl4RveXR0dXt+c3aDjnZcf3ZyiX1xg398g3t1hnpvgXx3gnlxfGpdnolvjnlnjHhmc2FXYlVScnqCjXdeenl3aHWTgIaRgoeQh4+bgYybh5Cbg4ya"
   },
@@ -2997,7 +3010,7 @@
     "normal": 19,
     "hyper": 30,
     "ex": null,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "05ee8dca-5200-4104-89a2-0207f61d8a3f",
     "banner": "lIKDlYqLi35/i3+Af3l5k4iKlImLj35/j4KDmZCTiYiIiYmJZ2dnXVlcb2dkb2Bjin5/kYuMi4OEfXh4gHt7lZKSj4mKjYOFjoiJkIeHeHFxjYuMZ2ZnWVlZjW9ufGtrnHl9mHmAmHN+i4WGlmhsmmlvnmd0mmdun2BrpGJjgGlrk4SImnmKiGd7nmdssm10oWxukoWGlXV5mHuEnXh/mIyRkHuDmHuAlGRolW9xk35/enp6cW9wi3N1i3Z/tlxj"
   },
@@ -3220,7 +3233,7 @@
     "normal": 22,
     "hyper": 28,
     "ex": 47,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "59c22bb3-4bcf-40ff-a96a-df6a107b8435",
     "banner": "ZVVhnnR8n4GInpOZdmFufWlrhW9xk3h7lHl/jnN4gHN1f3J0h3h2jHF4inN2e2BgfWFzmZaYpqOknHB4nZOFmpOLgV9tkoOIlo6QkISIkYWJkHyEmJWVhHmCjYiJk3Nok4Z0hHuCmJKXn42TnJGWnp5dfWRzfmt3gG54d2Vyf2t1fm94dmx4a2V4foeMd3SEloJ2n4OKm46XnJKLn5djiX1fc1p8cWl3dG17amV2cGp4bmhzcW14ZmN8hJidaXGF"
   },
@@ -3290,7 +3303,7 @@
     "normal": 35,
     "hyper": 41,
     "ex": null,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "92ad28aa-7282-484b-b8ae-c3eaf142df26",
     "banner": "g2lpcGlpiGlpcWlpcmxsfn5+fn19f3t7g35+h3BwgnZ2fXx8fn5+hIB/enh4f3d3h2lpmGlpcmlpcmlpjHJysp2drJWVp4yMtaCgo4+QoIyMsJiYtKCfs52crpiYo4yMnWlpi2lpbGlpb2lpcWlpiXBvjoSEjYSEioCAjoeHiICAioGBjoWFiYCAioGBhXt7c2lpfGlpfWlpdGlpeGlpfG9skHh4k3x8hXV1j3p6hHV1iHd3i3t7hXZ2k3p6hnR0"
   },
@@ -3388,7 +3401,7 @@
     "normal": 14,
     "hyper": 31,
     "ex": null,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "9256db6d-9c6f-4396-b9bb-32c215c2eb8b",
     "banner": "ln6NknSHlW6Fk3WIlV+AlGmDlmaDk3CHjWR7mGFhnnVum15ZhV9zk4aCnpOKnpOKl3WHmXmLlGyDl3mMj1t6lG6Gim19k2+IkGeDkHB0mYqKnFxUgVpignFzloF7lYB8l2N/lnGEmYCPlXOImH+PlnmJinN/iVl1lVt+kmxrmHR2nFlQjGBvg29sl35yiXZ3mn2NlnmJmGyFj2uCj2qBj3SFgGlyinB9knSGknKEiWt+lWxrjXV9jnRqjXt7iGpu"
   },
@@ -3668,7 +3681,7 @@
     "normal": 21,
     "hyper": 34,
     "ex": null,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "01bd6952-c36d-4b62-a285-47eacf0f2fcf",
     "banner": "jnBmj3RxjHFsjW9gmIBumH92mIF1mH5xmIJ4mIB1mH9xmIR7mIF1mIF1mIJ3mIN4jXFujnJ1jnBwkm9fmHxumHxymH51mH90mIV8mH5ymH9xmIJ4mIN5mIN0mH5ymIJ5kXVnkHl7kHRulnddmXxjmXlamXVZmXlZmHxdmIB0mXxsmH5smYFxmIF0mH5omYB1kXhsjnp7k4B9knJhlXFdlnddlXpomXhdmXVZmHhnmHZkmH52mHlrmHhmmHxmmIFp"
   },
@@ -10341,7 +10354,7 @@
     "normal": 24,
     "hyper": 33,
     "ex": 41,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "7d45f394-d508-4c40-a39b-947b0f456d58",
     "banner": "b4WAoZJsmqGQfJWPY46QXIqFYo6MYYKBeJeKcJiSbJKEc5mTbpmVZ5aSdZmUaJKMiIVyq49NpqGHpqCLh2RiWoWCZI2Fa4p/fZODdJKCepSHeZODbY18eJKDaIp+cY6Bl5J9qI5QnJJ3fYNzgHxsaoZ3cYx+d5B/eo58cYt1eI18b4l2Zol1YYdyaY56Y4h4iYNjqI1Pl4p3en92eXhqZINvZoZ0aol4bId5cop6c4l7c4h8X4FxX4JxZYd2aIp7"
   },
@@ -10662,7 +10675,7 @@
     "normal": 23,
     "hyper": 39,
     "ex": 48,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "743c97d2-b15a-498a-a87a-621c45c99160",
     "banner": "Z3iOa3qQdHyIbn2SZ3eOaHiOU2iDbHyRcH+SaHmOX3KJcn+SbHuOVGV6WF1jV2d8f42ciJGceoaTkZulfYybipWian6RfIubdYaXiZWigY6dg4+ch5GcZHuLbW1xXnWGfouXcoeReoaTdYWTaoSPZYWSaYKSYoGQYX2PaYCSbYSVZH6RXX2QZoSSZWxva4GMbnqDeoeRdH+LcICNaYCKaYaOaoeUdY+bbIuXaomWdY+bb4aVc5SdbYWQa250ZHZ8"
   },
@@ -11950,7 +11963,7 @@
     "normal": 28,
     "hyper": 36,
     "ex": 46,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "9a02c749-9b57-4f96-a96d-e62a474c0914",
     "banner": "WlZeW1daRENHXFZiln2Lln2MkX6Mk36MlICMkH2Mj3qLkX2MjYaSlIGNjICOj32MWlRfeG94X1hmdnJ9l3aGl3+LlXmJlnqJlniIl3qIk3qKmHqJk4SQlnmJlnuKlXmJdWJbfnJ2f213hHN2jmp9kHaAkX2Kj32Mj3iKknyLlHmKkniJjHiLj32MlX2Lk3iJe2tqal1hjnKDlHCBlXiHjXh8inh2i3h2kXB7lnuJlXWGlHOGk3WHlG+ElnOFlHSG"
   },
@@ -14187,7 +14200,7 @@
     "normal": 27,
     "hyper": 37,
     "ex": 44,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "1ccf1a0f-71f3-4df0-845f-6cf74b2d7458",
     "banner": "i3aChmpge2B1i3uLk32Clo6Ph25ljG1yk19wk3p0knp7lIeKjYCRfmd8kIiPkYeJgmhoim51loiPlYmQlXuCkYKPi216kWV9l1poj3mJlIeQl4CCk4mSh219l4+RkWtrk3Bvl3l5l3Z+mHN3mHV3mHJ2l3V8mGl5mG93mHV4mHV4mHR6l3h8mHV5l3F1lGJuZVFQZFJSlJCUkn6MmHR6mHh8mHp8lXOBl214l3J7l216mG95jm53kGlkhUtJlG1v"
   },
@@ -14607,7 +14620,7 @@
     "normal": 30,
     "hyper": 44,
     "ex": 49,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "453c47d8-4f1b-405a-8290-6237691c6378",
     "banner": "dm+PeXKVcmuIfXiXfHWkeHGedm2fg3Sfj3ulgGCDh26CkHB/lHxqm4RhknpYloNlenWXcm2Nd3SVhIChgnmVkoaTjH19j3x4oIJyjmlunn1pl3tminNgnIVplH5fkH5hgHuIbmh0dXB8ZFtzZWCJiIargoWjgoCjh3egh3aWjXaThGOJdWB5iH52h4NchIFbjoqRjIeMf36HXFd2b2eMlYqIhn53iXt1n4d2m3Rqnn5vl3GYimubdGd2kotyioJc"
   },
@@ -15769,7 +15782,7 @@
     "normal": 26,
     "hyper": 38,
     "ex": 45,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "132be4c5-053e-4977-b448-0b10a272cef9",
     "banner": "t39qrX51nnlzl3t1on92pIB8pn96rId9q5aIn45wqZqGnomAi3Ntl3hvk4F6knZnlX1zoYF5nnxzlXBprn1uoH13n3t3o4F4rIx6nopmmoR7kH14kHhzlHt1lHlvlXtokn97opCLeG1nhXl2h3p2hGtoi3t5iXVxiG5lhHhsgG9rdmhlfW9reWdjnI2Gi4iCjHl0h4iEeXFohnBoe29rimhkiHFthG9qiG1liXNsi3hzfWtmf29rgWxkjYR8eXh0"
   },
@@ -17491,7 +17504,7 @@
     "normal": 33,
     "hyper": 44,
     "ex": 50,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "1920b8f0-d6c3-435f-b634-3bee32674112",
     "banner": "fYGIf4SOf4qSiJKdd4SUY2eAZGuBbnd8cH6Ca4uPaHt8hY6OfYqIaX98g5aWhJebfYGGbYWUY3WJgJKXZoGMYX2NbXh9c3Z2en19cXd4aGhqa2psXnRzXoSCXoKDcISKeYuLnZ2goaSljI6Vb4SLaYWIcHd4bXBwc3Z2c3V1d3p7dX6AXmxtXoqHXoCAYXh6qKmqpqeoqaemm5eWlZKRmaCZgYp5a3N2dHp7e4KDen+AeYSEZG5tXn95Xm1rd4SC"
   },
@@ -17883,7 +17896,7 @@
     "normal": 33,
     "hyper": 44,
     "ex": 49,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "e66f3501-4996-4dec-9235-eacb592fd1a0",
     "banner": "cHSFe36Og4aSfX+PeYCTa3eVb36Ybn+db4GdcIOccICZaWmFbG6Ja2uHdXiQdneQfoCWg4OSdnqcdnqccHaecXigb3WgcniganSfaXOfbnWfbnWeaW+XcXKSfH+cenyWfoZ0l5aLg42Bc3qNXmybc3mgbnagcHegbXWgY22ecnmgYWyTVVt4XVhljYl/lZOIgYSFh4mHg4aFdXiFdn6adn6dd3+cdX2ccXuccH+cbn2cYmmIXl19ZmSIbGyGgImO"
   },
@@ -22653,7 +22666,7 @@
     "normal": 26,
     "hyper": 37,
     "ex": 45,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "5550ce2b-1c45-4f3f-bcf8-fb8148c2738a",
     "banner": "iZ2ckJWOmJ6flJ2eiJaVeYmTanqRY3SQaHiRZXWQZXeRW2+MZn6UaHqSYH+UZn6UkI+EoI15jIuFmJ+fk5yceYmVfouZbHqTdIGWcXyUc36WZHSOdn6WbnqTcn+WdX+WiIF6kYV3lZych4mLhpSXZW98XWuEX2eDb4OXZ3mRbnuRbHeQbnqRc3+VXWeGaXCJZ2p7fYN+fot/dIFyZ3JyXmhuX2F6YGR+anSLbniPanKLbHWLaICSaXKKYWaCdHiL"
   },
@@ -25289,7 +25302,7 @@
     "normal": 29,
     "hyper": 42,
     "ex": 47,
-    "pack": "版",
+    "pack": "PK7",
     "music_id": "0b0bdfe8-2069-43b0-8235-9e13e667f69d",
     "banner": "bmNbbWhmdnRzcnJycXFxd3NzfXV0fnNyjGNhjnJylXeBlHqIl3yIlImQnouMsnlwY3JrdXh3eHh4eHh4dXV1dXV1dnZ2fHx9hnV4f4SZiIWYgYWbhoqdgoabjYWQsmdcXXOMY3aQcnqFgoKDdX+HeX+FiIqQe4GOeXyGjIOOmX6Fm4GJmo6RkYyZsYBpsm1bW2uMW2mIanmNbXJ9b3F4cniLdX6YcH6SdIaeeIidhYORnYqYnYiTpIN+r3Nhr11b"
   },
@@ -25573,7 +25586,7 @@
     "normal": 21,
     "hyper": 34,
     "ex": 43,
-    "pack": "",
+    "pack": "版",
     "music_id": "21602a5a-081e-4aaa-a2aa-c995ffaf6d32"
   },
   {
@@ -26385,7 +26398,7 @@
     "normal": 27,
     "hyper": 40,
     "ex": 46,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "fca94111-4e18-42ea-81a4-e2bcb9f6c2a0"
   },
   {
@@ -26869,7 +26882,7 @@
     "normal": 26,
     "hyper": 48,
     "ex": null,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "24989168-4303-4dd7-8200-ab6062d030f5",
     "banner": "c3FvjXtvjH9wfnx8gH+GeXl6f3+Cg4KCiYmMd3V5cXJxhISLenFqn4RmkIBzX1tag3p1mYd/f3hueXl5hYODgn+Ai4yTf3t7iIaFe4lxgIZ1kpKSgHJsno9lf5ZkoZ2Xf3BnkYJya2lnamprfnZ2j4B1f3h6cnF8c3J9f4Bpk453g3VxgHZ1haNema6Jz8/PjHdqh390cHBxgnh0iH94h3+Afnh6f3duf3dtgXN4voh4p4Jwn35smYtnlodzpI6G"
   },
@@ -26883,7 +26896,7 @@
     "normal": 15,
     "hyper": 36,
     "ex": 42,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "696c2845-2d48-42f2-a852-2d7cc31c69b2",
     "banner": "dXJxindxhXhyfXx7i4F8e3h3hX58jYF6koZ/gHZ0hHx7fnt5bWJinHRskH5+ZGBghnp2kYN+fHVweXl5hYGBhn57lYyHgHx6hIKBmYhxmYFsiYJ+cWJoondnrJNroZiXfnVyiH14bmtqenRygnFqiYB5i3xxjYB3jXpvlYBunY+AhXVujXh6wplgvaqFxcXFf3NvgXx6bWppgXh0iX10gn58iIF8f3ZwlXlolHx1aGRriHh2l29ypoRtloV/oJCR"
   },
@@ -26897,7 +26910,7 @@
     "normal": 20,
     "hyper": 32,
     "ex": 47,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "591656e7-c086-4135-b852-f440b01ef081",
     "banner": "j5WYiIWFkYmKlZyejZKViY+Si5GTgoeIhImKiYuLf4KEfoCBenx9eHl6c3V2cnV2lpKUkoBkj3BspKeqlJOQiYiGi4+QgISFg4SFenp6eXp6eXl5e3t7ampqenp6c3R0nZyfmo15mIV3tre4kYyHhYB6dXd3ZWVlZWVlbm5ua2trbm5ub29vampqbG1ten1+tLa3cG5yeGdqd3J2b21wm5ubeXh5Zmdmampqc3Nzd3d3cXFxcHFxfHx8f4GBfYCB"
   },
@@ -26953,7 +26966,7 @@
     "normal": 22,
     "hyper": 40,
     "ex": 48,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "c9e329be-171a-41c7-b266-c1a281a22015",
     "banner": "aV9liHh4qZJ7iH2HYmJifXF5g3Z/h3aCdmtybmdsdmtyg3Z/X15fYWBhZmVldm1yYlxinIiIqYZxmHyAbm1tgHJ8iHaCiHiEe3F4iHeCl4CQhnSBYl9hfXR6fnN7mIaSb2dtkn9uupBylYOKmIWIn4qHfHJ6qpWjiXuFjH2IkoGNkoCNdGxxkoSOj4OMmY2Xn4l+cmJtrH1yrZGUqJSRooaCn4aElX6Ajn2Cj32CknyBjHuBdmltinyCjHuElYmO"
   },
@@ -27079,7 +27092,7 @@
     "normal": 23,
     "hyper": 33,
     "ex": 39,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "86b47716-6159-4ef4-9c63-4b79be92d891",
     "banner": "fICIf3OLjXyTenGEk4mQopudnIaLjG97iGh2gl9uj3eAhmRynYqShmRzhmV0i2t3c2x5mYSXl5KalmmCf0tqm4qTn4yUjG56hGJwe1Nmg2NzgmBxloGLg2Bygl1vknB+hFtyl2+FmYqTln2Og1d0h2yXk3SfnIaLl4SKjneDjHWBinF+lH+Jk3SCiV9xjmd3hGR6jFx8j2F2jkNlkWaIjHOOjHiKoZKTloSIiG96jHR9im98i2p7jmt7jGZ3k3F+"
   },
@@ -27107,7 +27120,7 @@
     "normal": 31,
     "hyper": 41,
     "ex": 46,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "18c822e7-6988-4664-8b98-d1079c075545",
     "banner": "koRzlnt4nImBl4V8kXdukXdvknNyknNxknNzk3Jzi3xnk292knVxknRxlHp2jnlzc3hldH5dcXhee4VgcHdcd3xkcntcdn1geoNif39tb3Ved4FgdHxec3tdgIZrd3xkp4qEqYqHp4SCn3NwlHZwknx1l3hylXhym3tym3dyjnpxnHdwnXNvoHRwo4F8nndvrY6PrY+QrY+Qpn1+lnt4lYN+lHt3lX15j3p7kXt3k3x3lnl2pHd5pHd5pXl7p4GC"
   },
@@ -27149,7 +27162,7 @@
     "normal": 18,
     "hyper": 31,
     "ex": 38,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "53e1d198-f66f-4b92-8b5a-8625e2429c36",
     "banner": "jnKEfHKUenWXd2eQeXSUcXqXbX+dbH6dW3Saa32dbX+dZXqcZnucX3iZZ32bZXaQeXeUe3uUeYKYcnaUenaXeYOfanWac32ca3KQcnmXcniXc3eUdXqXe3+WcnWUfnmCkYyKjDhKoIR3m3NueVp2foqgbX2fanWZfHGIZ26UeXqUbHeZbHeadXOQd2h5jYWEkZKPnHh3oX11mmhnf2R5c3qQaICYaoaPZ4GIb3+PcoWTb4STaoKVb3+Xa3uUhHp+"
   },
@@ -27387,7 +27400,7 @@
     "normal": 22,
     "hyper": 34,
     "ex": 43,
-    "pack": "",
+    "pack": "26/11",
     "music_id": "73a82fa3-5c15-438b-8b8a-5a4ee94a22ca",
     "banner": "iIRrf4Fpa4xse4pvdopyfJN+epN/ZZJ1epR+hJd/l5aFnpOJlIF2gXdlf4J/eZSIenpkkYFrkYFsloh0fn9xiIh+lZiPeJSBk5aKkot+kYR1l39wlnFkj2dfi3Z4npughX9phoNyoJqNgY56gI52ZY9ydJh/eJF+jJiMmqachZF8bXNhbFZRlJKWpVRYmWJmcX5ljIt5koZ3g4l1eoZxeIt3i5WJbo14g5OAj4x/kIRxeHZkeltXcFNbhF1ja1xi"
   },
@@ -27485,7 +27498,7 @@
     "normal": 20,
     "hyper": 28,
     "ex": null,
-    "pack": "",
+    "pack": "26/10",
     "music_id": "d5f87650-0e86-43f4-b633-bc9d325b7653",
     "banner": "i4hhiYtWi35klYV7mpmYgohfkZVWfINafnNzgHlxl4OAm4eDnI2GnIqKnYuOm4iMgotUg45pfYJZhYVojJF2c4FdcYhic4RUh4B5kIWGl4KPmoOGmoCBln57kX18lYCEgYtUho5rdIJShpRfiZNkd4VSiI5wgIpWh4JvfoFohoFzk5Bzk4lzkICAiYF7kIaAf41dlpmPfY1Nj5SBl5qNeIlPmJqUfItZgntlfXplg3hvf35lfnhpgHRugXtqint0"
   },
@@ -27541,7 +27554,7 @@
     "normal": 18,
     "hyper": 30,
     "ex": 40,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "d30f8202-7bcf-4a8c-b0f1-5c147d880eb1",
     "banner": "cWSAkXB8nnVxfYBtcYxvcYxvg4p1lpGGkId9jYZ+g351jH96i3p4jYB9dGRgbmJffWqBqJeXno2bk31tc4xvb45vh4t3q52apI2HmpCKpJWSp5SRqZaUm4yJbWNfcGNfbWSApJCPnI+NdIZxc4xvdItvfYpygol2koqAnYmCl4F7m4mEkn56e2hkeGNfbGNfb2J8eW9xenJ2cYRwdYtvcYxvdIpvgIp3kYqAlYqCnouGkoN/jH98cGNfcmNfbmNf"
   },
@@ -28240,7 +28253,7 @@
     "normal": 18,
     "hyper": 30,
     "ex": 37,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "5c97b82e-4e6c-4395-a074-18e4b9847070",
     "banner": "mnlkj4V/hXt0hnRph3x2hnp0lIZ9mYZ0mo97nIx1lYN3lX5yinJoe2hifnFscGlnlnlmmZmZiXdslI+LlHhmh3pxmYl6mZGAmpeIopmBk4l+kod8oIdvjnlpe2xnZWJilYJ2n5+fjH51kpGRhX14inx0q4NmqY1tqZBuqoloo4BmlYd4f3Jml4dya2ZlZWJih4F+fnx7h4OAhYF9hoKAhXZqiXdoh3hpk3pmnIBonHxlgXJlkXdkm31jh3JnY2Ji"
   },
@@ -28534,7 +28547,7 @@
     "normal": 29,
     "hyper": 39,
     "ex": 44,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "677c1ba0-7dcf-44b6-afcc-e1984243316e",
     "banner": "lmaCkXZ8kmqIkmiHkHJ5lWmEj2mLknV/lWp/jWiNlmyBkXN8kGFxkVp6hHGIiXWCl3qJl3iJlXmMlnSFl2mCl4CNl3uKl3iIlnaKl3OHk32LlnuKk191jnl7bHGShYGHl3eJl3KFlWqGlnWJl3SGl3eJlGSFjmZwk1p1hFCLhFqBhXB9l1BQlmxojXdzgW6LkniAlWWCj2WIk3WAlWqBj2iKlWN9k1tzj16BgmSKdGaOl5eXk290kllakVh3iVqF"
   },
@@ -28702,7 +28715,7 @@
     "normal": 28,
     "hyper": 40,
     "ex": 43,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "378bdb3d-cce1-4dea-81eb-30a08464d404",
     "banner": "VVSRZFudeXaRkp9wkp9wj5d5kpiBi5V7jZd2k5iCjJZ4jpZ8f5dwbIl4ao9nipd4iXmJi4qWkJCVh5pogZJkf450hJaFf5WBf5V8ipmKfpR3h5eDgpaDh5mJfJR0fpR+l3x2j3p5f4KFfJRnZmdfaW1egJ5egJhqfZNxgpdwgphtfJJsgpd0gZV2fZVxf51eXXl2aHFxcnJzbHRvcn1nYG5dY5Nfa5FlcpJudJRvdpZwb5FqfpZ+dpVzcpNtYpJe"
   },
@@ -28744,7 +28757,7 @@
     "normal": 21,
     "hyper": 31,
     "ex": null,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "3f25286a-b646-43a9-9008-d19e2a67fc59",
     "banner": "inZ0jHFnkoB6mpqYj5CChYZigIlzhIR2int8jn58kH93lod+lYh/jX96c11OjnlOinFokX95j3pylJKGl5eRmZiVmpiXl5OElY+QlpCTk4qMkIBvjnyGfGFvhnFMjXhOhXhtkHx0koB6lo2KkH52jHNqim5mjHNni3NvkoB5inNug2Nadmp1hHeBjFhtkGJ3hZKAmpqYnJyclo6KjnZtimxhi25kimxiimxii25ki3RyiG5oiG9kj2J4mGF/jl54"
   },
@@ -29219,7 +29232,7 @@
     "normal": 22,
     "hyper": 31,
     "ex": null,
-    "pack": "",
+    "pack": "Li7",
     "music_id": "90921937-a821-4bba-b5d4-d151e9568f19",
     "banner": "gICRgIGThIaVg4WVdHaJgIKUbHGPYmeLe3BmjIJchXVigHFcg3VdmZOVpaOif4OQe32QdHaPeXuRdXePcXSIbnGJcHOPZGiKeW1ijIJcgnNigXCDhXZpnZmbo6ChgoOQl5abc3WOenyTZmmIa26GYWaEaW2Ma2+SW1ZwhHdchHJol4CKfm92pKKhjoGOmI2Vm5mccnSOfH6TdHaKdXaLbnGJZWmHf4GZg4GTdnCIgW+Ag1Fxglp1joSOjXmJlouU"
   },
