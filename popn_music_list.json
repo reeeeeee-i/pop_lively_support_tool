@@ -1895,6 +1895,19 @@
     "music_id": "ba67d23d-59d1-4015-8c97-6505a7cb0ecb"
   },
   {
+    "ver": "pop'n music High☆Cheers!!",
+    "genre": "おまじニャい",
+    "title": "神よ、ニャンコを与えたまえ！",
+    "artist": "かめりあ feat. ななひら & 謎の黒猫神 W",
+    "bpm": "222",
+    "easy": 15,
+    "normal": 31,
+    "hyper": 39,
+    "ex": 47,
+    "pack": "",
+    "music_id": "c5432eb3-3930-4cd0-92de-70b72b739f05"
+  },
+  {
     "ver": "pop'n music",
     "genre": "アニメヒーロー",
     "title": "The theme of GAMBLER Z",
@@ -25302,7 +25315,7 @@
     "normal": 29,
     "hyper": 42,
     "ex": 47,
-    "pack": "PK7",
+    "pack": "版",
     "music_id": "0b0bdfe8-2069-43b0-8235-9e13e667f69d",
     "banner": "bmNbbWhmdnRzcnJycXFxd3NzfXV0fnNyjGNhjnJylXeBlHqIl3yIlImQnouMsnlwY3JrdXh3eHh4eHh4dXV1dXV1dnZ2fHx9hnV4f4SZiIWYgYWbhoqdgoabjYWQsmdcXXOMY3aQcnqFgoKDdX+HeX+FiIqQe4GOeXyGjIOOmX6Fm4GJmo6RkYyZsYBpsm1bW2uMW2mIanmNbXJ9b3F4cniLdX6YcH6SdIaeeIidhYORnYqYnYiTpIN+r3Nhr11b"
   },
@@ -29908,16 +29921,29 @@
   },
   {
     "ver": "pop'n music Lively",
-    "genre": "",
-    "title": "儚キ戀ノ幻想譚",
-    "artist": "まろん feat. あやぽんず＊ (森羅万象)",
-    "bpm": "175",
-    "easy": 16,
+    "genre": "コンフロンテーショナル",
+    "title": "ANTI ANTHEM",
+    "artist": "BEMANI Sound Team \"ZAQUVA\"",
+    "bpm": "128-175",
+    "easy": 13,
+    "normal": 28,
+    "hyper": 40,
+    "ex": 47,
+    "pack": "Li2",
+    "music_id": "08d0fed4-3467-4a8b-a34a-f6f5da9a2090"
+  },
+  {
+    "ver": "pop'n music Lively",
+    "genre": "ネメシスコア",
+    "title": "GEMINI LA2ER",
+    "artist": "ミカルコスモ(せらみかる×cosMo＠暴走P)",
+    "bpm": "200",
+    "easy": 15,
     "normal": 32,
-    "hyper": 42,
+    "hyper": 43,
     "ex": 49,
     "pack": "Li2",
-    "music_id": "5a79516f-94d7-4fa6-a398-0df1d743580e"
+    "music_id": "e91d707a-c90a-4882-86b7-2ddb63b05be7"
   },
   {
     "ver": "pop'n music Lively",
@@ -29934,33 +29960,7 @@
   },
   {
     "ver": "pop'n music Lively",
-    "genre": "",
-    "title": "夜に駆ける",
-    "artist": "♪♪♪♪♪ (YOASOBI)",
-    "bpm": "130",
-    "easy": 6,
-    "normal": 20,
-    "hyper": 34,
-    "ex": 39,
-    "pack": "版/新",
-    "music_id": "e8e585e0-e2bd-475d-9142-b46e3dfe9216"
-  },
-  {
-    "ver": "pop'n music Lively",
-    "genre": "",
-    "title": "ANTI ANTHEM",
-    "artist": "BEMANI Sound Team \"ZAQUVA\"",
-    "bpm": "128-175",
-    "easy": 13,
-    "normal": 28,
-    "hyper": 40,
-    "ex": 47,
-    "pack": "Li2",
-    "music_id": "08d0fed4-3467-4a8b-a34a-f6f5da9a2090"
-  },
-  {
-    "ver": "pop'n music Lively",
-    "genre": "",
+    "genre": "プログレッシブEDM",
     "title": "Astrogazer",
     "artist": "DJ TOTTO",
     "bpm": "154",
@@ -29974,15 +29974,28 @@
   {
     "ver": "pop'n music Lively",
     "genre": "",
-    "title": "GEMINI LA2ER",
-    "artist": "ミカルコスモ(せらみかる×cosMo＠暴走P)",
-    "bpm": "200",
-    "easy": 15,
+    "title": "夜に駆ける",
+    "artist": "♪♪♪♪♪ (YOASOBI)",
+    "bpm": "130",
+    "easy": 6,
+    "normal": 20,
+    "hyper": 34,
+    "ex": 39,
+    "pack": "版/新",
+    "music_id": "e8e585e0-e2bd-475d-9142-b46e3dfe9216"
+  },
+  {
+    "ver": "pop'n music Lively",
+    "genre": "和風歌謡硬核音楽",
+    "title": "儚キ戀ノ幻想譚",
+    "artist": "まろん feat. あやぽんず＊ (森羅万象)",
+    "bpm": "175",
+    "easy": 16,
     "normal": 32,
-    "hyper": 43,
+    "hyper": 42,
     "ex": 49,
     "pack": "Li2",
-    "music_id": "e91d707a-c90a-4882-86b7-2ddb63b05be7"
+    "music_id": "5a79516f-94d7-4fa6-a398-0df1d743580e"
   },
   {
     "ver": "pop'n music Lively",
