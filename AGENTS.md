@@ -96,3 +96,4 @@ python manage_db.py stats                  # DB 管理 CLI (import-music / expor
 - 既存のコードスタイル（型ヒント、`from __future__ import annotations`、`logger = get_logger(__name__)` による logging）に合わせる
 - Windows 専用 API（ctypes, winrt, dxcam）を使う箇所は、テストから import されても落ちないよう配慮する（`tests/` は `log/` を作成してから import している）
 - 公開リポジトリのため、個人情報・ローカルパス・認証情報・利用者のスコアデータをコミットやコメント、PR に含めない
+- 個人情報・機密情報（ローカルのパス、アカウント名、メールアドレス、API キーなど）や、自分の環境だけで必要な指示は、`CLAUDE.local.md` / `AGENTS.local.md`（`AGENT.local.md` も可）に書く。これらは `.gitignore` 済みで共有（コミット）されない。このファイルには書かない
