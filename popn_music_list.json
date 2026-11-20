@@ -1414,6 +1414,19 @@
   },
   {
     "ver": "pop'n music High☆Cheers!!",
+    "genre": "和風歌謡硬核音楽",
+    "title": "儚キ戀ノ幻想譚",
+    "artist": "まろん feat. あやぽんず＊ (森羅万象)",
+    "bpm": "175",
+    "easy": 16,
+    "normal": 32,
+    "hyper": 42,
+    "ex": 49,
+    "pack": "Li2",
+    "music_id": "5a79516f-94d7-4fa6-a398-0df1d743580e"
+  },
+  {
+    "ver": "pop'n music High☆Cheers!!",
     "genre": "キューティーシャッフル",
     "title": "charm♡you",
     "artist": "U-ske feat.花柚",
@@ -29983,19 +29996,6 @@
     "ex": 39,
     "pack": "版/新",
     "music_id": "e8e585e0-e2bd-475d-9142-b46e3dfe9216"
-  },
-  {
-    "ver": "pop'n music Lively",
-    "genre": "和風歌謡硬核音楽",
-    "title": "儚キ戀ノ幻想譚",
-    "artist": "まろん feat. あやぽんず＊ (森羅万象)",
-    "bpm": "175",
-    "easy": 16,
-    "normal": 32,
-    "hyper": 42,
-    "ex": 49,
-    "pack": "Li2",
-    "music_id": "5a79516f-94d7-4fa6-a398-0df1d743580e"
   },
   {
     "ver": "pop'n music Lively",
